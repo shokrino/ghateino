@@ -52,6 +52,10 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$settings = $this->get_settings();
 			$mode     = $settings['mode'];
 
+			if ( $this->is_elementor_editor_context() ) {
+				return $preempt;
+			}
+
 			if ( $mode === 'disabled' ) {
 				return $preempt;
 			}
@@ -399,6 +403,14 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				return false;
 			}
 
+			if ( $this->is_elementor_editor_context() ) {
+				return false;
+			}
+
+			if ( ! $this->is_known_cdn_host( $host ) && ! $this->is_mixpanel_host( $host ) ) {
+				return false;
+			}
+
 			$site_host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
 			$site_host = strtolower( $site_host );
 
@@ -407,6 +419,28 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			return $host !== $site_host;
+		}
+
+		private function is_elementor_editor_context() {
+			if ( ! is_admin() ) {
+				return false;
+			}
+
+			$action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
+			$page   = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+			if ( 'elementor' === $action || 'elementor' === $page || isset( $_GET['elementor-preview'] ) ) {
+				return true;
+			}
+
+			if ( wp_doing_ajax() ) {
+				$ajax_action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+				if ( false !== strpos( $ajax_action, 'elementor' ) ) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private function is_known_cdn_host( $host ) {
@@ -430,6 +464,16 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$path = strtolower( $path );
 			$plugin_url = plugin_dir_url( __FILE__ ) . 'assets/vendor/wp-core-js/';
 			$swiper_path = plugin_dir_path( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.js';
+			$ace_base_dir = plugin_dir_path( __FILE__ ) . 'assets/vendor/ace-builds/src-min-noconflict/';
+			$ace_base_url = plugin_dir_url( __FILE__ ) . 'assets/vendor/ace-builds/src-min-noconflict/';
+
+			if ( preg_match( '#/ace(-min)?\\.js$#', $path ) && file_exists( $ace_base_dir . 'ace.min.js' ) ) {
+				return $ace_base_url . 'ace.min.js';
+			}
+
+			if ( preg_match( '#/ext-language_tools\\.js$#', $path ) && file_exists( $ace_base_dir . 'ext-language_tools.js' ) ) {
+				return $ace_base_url . 'ext-language_tools.js';
+			}
 
 			if ( preg_match( '#/swiper(-bundle)?(\\.min)?\\.js$#', $path ) && file_exists( $swiper_path ) ) {
 				return plugin_dir_url( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.js';
@@ -475,12 +519,18 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 		private function prepare_local_assets() {
 			$this->ensure_core_js_assets();
+			$this->ensure_ace_assets();
 			$this->ensure_dashicons_assets();
 			$this->ensure_eicons_assets();
 			$this->ensure_swiper_assets();
 			$this->ensure_fontawesome_assets();
 			$this->ensure_google_fonts_assets();
 			$this->ensure_block_fallback_assets();
+		}
+
+		private function ensure_ace_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$this->ensure_dir( $plugin_base . 'assets/vendor/ace-builds/src-min-noconflict/' );
 		}
 
 		private function ensure_block_fallback_assets() {
@@ -868,3 +918,5 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 	new Ghateino_HTTP_Control();
 }
+
+// A plugin from Shokrino Team in shokrino.com

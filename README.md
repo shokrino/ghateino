@@ -32,6 +32,8 @@
 - جایگزینی خودکار `Font Awesome` CSS با نسخه لوکال:
 - `all.min.css`
 - `v4-shims.min.css`
+- `ace.min.js`
+- `ext-language_tools.js`
 - جایگزینی `Google Fonts (Roboto)` با CSS/Font لوکال
 - جایگزینی `dashicons` با فایل‌های لوکال (CSS + فونت)
 - جایگزینی `eicons` (Elementor Icons) با فایل‌های لوکال (CSS + فونت)
