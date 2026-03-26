@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ghateino
  * Description: در شرایط قطعی اینترنت یا نیاز به قطع کردن درخواست ها به وبسایت های خاص بهترین گزینه شما افزونه قطعینو هست
- * Version: 1.0.0
+ * Version: 1.1.0
  * Plugin URI: https://shokrino.com
  * Author: Shokrino Team
  * Author URI: https://shokrino.com
@@ -24,6 +24,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 		public function __construct() {
 			$settings = $this->get_settings();
+			$this->prepare_local_assets();
 
 			add_filter( 'pre_http_request', [ $this, 'filter_http_requests' ], 10, 3 );
 
@@ -31,6 +32,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			add_action( 'admin_init', [ $this, 'register_settings' ] );
 			add_action( 'admin_init', [ $this, 'handle_clear_logs' ] );
 			add_action( 'wp_dashboard_setup', [ $this, 'register_dashboard_widget' ] );
+			add_filter( 'script_loader_src', [ $this, 'maybe_replace_script_src' ], 20, 2 );
+			add_filter( 'style_loader_src', [ $this, 'maybe_replace_style_src' ], 20, 2 );
 
 			if ( $settings['disable_gravatar'] === 'yes' ) {
 				add_filter( 'get_avatar', [ $this, 'disable_gravatar' ], 10, 5 );
@@ -60,6 +63,11 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			$host = strtolower( $host );
+
+			if ( 'yes' === $settings['block_mixpanel'] && $this->is_mixpanel_host( $host ) ) {
+				$this->log_request( $url, $host, 'blocked_mixpanel' );
+				return new WP_Error( 'ghateino_blocked', 'Blocked by Ghateino Mixpanel Rule' );
+			}
 
 			if ( $mode === 'whitelist' ) {
 				$whitelist = array_map( 'trim', explode( "\n", $settings['whitelist'] ) );
@@ -191,7 +199,73 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 
 		public function register_settings() {
-			register_setting( 'ghateino_group', self::OPTION_KEY );
+			register_setting(
+				'ghateino_group',
+				self::OPTION_KEY,
+				[ 'sanitize_callback' => [ $this, 'sanitize_settings' ] ]
+			);
+		}
+
+		public function sanitize_settings( $input ) {
+			$input = is_array( $input ) ? $input : [];
+
+			$mode = isset( $input['mode'] ) ? sanitize_text_field( $input['mode'] ) : 'disabled';
+			if ( ! in_array( $mode, [ 'disabled', 'whitelist', 'blacklist' ], true ) ) {
+				$mode = 'disabled';
+			}
+
+			$gravatar_url = isset( $input['gravatar_url'] ) ? esc_url_raw( trim( (string) $input['gravatar_url'] ) ) : '';
+			if ( '' === $gravatar_url ) {
+				$gravatar_url = plugin_dir_url( __FILE__ ) . 'user.jpg';
+			}
+
+			$retention_days = isset( $input['log_retention_days'] ) ? (string) intval( $input['log_retention_days'] ) : '7';
+			if ( ! in_array( $retention_days, [ '1', '3', '7', '15', '30' ], true ) ) {
+				$retention_days = '7';
+			}
+
+			return [
+				'mode'                => $mode,
+				'whitelist'           => $this->sanitize_host_list( $input['whitelist'] ?? '' ),
+				'blacklist'           => $this->sanitize_host_list( $input['blacklist'] ?? '' ),
+				'disable_telemetry'   => isset( $input['disable_telemetry'] ) ? 'yes' : 'no',
+				'disable_updates'     => isset( $input['disable_updates'] ) ? 'yes' : 'no',
+				'disable_gravatar'    => isset( $input['disable_gravatar'] ) ? 'yes' : 'no',
+				'gravatar_url'        => $gravatar_url,
+				'enable_logging'      => isset( $input['enable_logging'] ) ? 'yes' : 'no',
+				'log_retention_days'  => $retention_days,
+				'local_asset_rewrite' => isset( $input['local_asset_rewrite'] ) ? 'yes' : 'no',
+				'block_mixpanel'      => isset( $input['block_mixpanel'] ) ? 'yes' : 'no',
+			];
+		}
+
+		private function sanitize_host_list( $raw_hosts ) {
+			$raw_hosts = is_string( $raw_hosts ) ? $raw_hosts : '';
+			$lines     = preg_split( '/\r\n|\r|\n/', $raw_hosts );
+			$hosts     = [];
+
+			foreach ( $lines as $line ) {
+				$line = trim( $line );
+				if ( '' === $line ) {
+					continue;
+				}
+
+				$host = wp_parse_url( $line, PHP_URL_HOST );
+				if ( ! $host ) {
+					$host = $line;
+				}
+
+				$host = strtolower( trim( (string) $host ) );
+				$host = preg_replace( '/:\\d+$/', '', $host );
+
+				if ( '' !== $host ) {
+					$hosts[] = $host;
+				}
+			}
+
+			$hosts = array_values( array_unique( $hosts ) );
+
+			return implode( "\n", $hosts );
 		}
 
 		private function get_settings() {
@@ -199,17 +273,327 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			$defaults = [
 				'mode'               => 'disabled',
-				'whitelist'          => '',
+				'whitelist'          => 'api.shokrino.com',
 				'blacklist'          => '',
 				'disable_telemetry'  => 'yes',
 				'disable_updates'    => 'yes',
 				'disable_gravatar'   => 'yes',
 				'gravatar_url'       => plugin_dir_url(__FILE__) . 'user.jpg',
 				'enable_logging'     => 'no',
-				'log_retention_days' => '7'
+				'log_retention_days' => '7',
+				'local_asset_rewrite'=> 'yes',
+				'block_mixpanel'     => 'yes',
 			];
 
 			return wp_parse_args( $saved, $defaults );
+		}
+
+		public function maybe_replace_script_src( $src, $handle ) {
+			$settings = $this->get_settings();
+			if ( 'yes' !== $settings['local_asset_rewrite'] ) {
+				return $src;
+			}
+
+			$host = (string) wp_parse_url( $src, PHP_URL_HOST );
+			$path = (string) wp_parse_url( $src, PHP_URL_PATH );
+
+			if ( '' === $host || '' === $path ) {
+				return $src;
+			}
+
+			$host = strtolower( $host );
+
+			if ( 'yes' === $settings['block_mixpanel'] && $this->is_mixpanel_host( $host ) ) {
+				$this->log_request( $src, $host, 'mixpanel_rewritten_to_local_stub' );
+				return plugin_dir_url( __FILE__ ) . 'assets/js/mixpanel-stub.js';
+			}
+
+			if ( ! $this->is_known_cdn_host( $host ) ) {
+				return $src;
+			}
+
+			$replacement = $this->map_script_path_to_local( $path, $src );
+			if ( $replacement ) {
+				$this->log_request( $src, $host, 'cdn_rewritten_to_local' );
+				return $replacement;
+			}
+
+			return $src;
+		}
+
+		public function maybe_replace_style_src( $src, $handle ) {
+			$settings = $this->get_settings();
+			if ( 'yes' !== $settings['local_asset_rewrite'] ) {
+				return $src;
+			}
+
+			$host = (string) wp_parse_url( $src, PHP_URL_HOST );
+			$path = (string) wp_parse_url( $src, PHP_URL_PATH );
+
+			if ( '' === $host || '' === $path ) {
+				return $src;
+			}
+
+			$host = strtolower( $host );
+			$path = strtolower( $path );
+
+			$swiper_css_path = plugin_dir_path( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.css';
+			if ( preg_match( '#/swiper(-bundle)?(\\.min)?\\.css$#', $path ) && file_exists( $swiper_css_path ) ) {
+				$this->log_request( $src, $host, 'swiper_rewritten_to_local' );
+				return plugin_dir_url( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.css';
+			}
+
+			if ( strpos( $path, 'dashicons' ) !== false ) {
+				$this->log_request( $src, $host, 'dashicons_rewritten_to_local' );
+				return plugin_dir_url( __FILE__ ) . 'assets/vendor/dashicons/css/dashicons.min.css';
+			}
+
+			if ( strpos( $path, 'eicons' ) !== false || strpos( $path, 'elementor-icons' ) !== false ) {
+				$this->log_request( $src, $host, 'eicons_rewritten_to_local' );
+				return plugin_dir_url( __FILE__ ) . 'assets/vendor/eicons/css/elementor-icons.min.css';
+			}
+
+			return $src;
+		}
+
+		private function is_known_cdn_host( $host ) {
+			$cdn_hosts = [
+				'ajax.googleapis.com',
+				'cdnjs.cloudflare.com',
+				'cdn.jsdelivr.net',
+				'unpkg.com',
+				'code.jquery.com',
+				'fonts.googleapis.com',
+				'fonts.gstatic.com',
+				'use.fontawesome.com',
+				'kit.fontawesome.com',
+				'maxcdn.bootstrapcdn.com',
+			];
+
+			return in_array( $host, $cdn_hosts, true );
+		}
+
+		private function map_script_path_to_local( $path, $original_src ) {
+			$path = strtolower( $path );
+			$plugin_url = plugin_dir_url( __FILE__ ) . 'assets/vendor/wp-core-js/';
+			$swiper_path = plugin_dir_path( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.js';
+
+			if ( preg_match( '#/swiper(-bundle)?(\\.min)?\\.js$#', $path ) && file_exists( $swiper_path ) ) {
+				return plugin_dir_url( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.js';
+			}
+
+			if ( preg_match( '#/jquery(\\.min)?\\.js$#', $path ) ) {
+				return $plugin_url . 'jquery.min.js';
+			}
+
+			if ( preg_match( '#/jquery-migrate(\\.min)?\\.js$#', $path ) ) {
+				return $plugin_url . 'jquery-migrate.min.js';
+			}
+
+			if ( preg_match( '#/underscore(-min)?\\.js$#', $path ) ) {
+				return $plugin_url . 'underscore.min.js';
+			}
+
+			if ( preg_match( '#/backbone(-min)?\\.js$#', $path ) ) {
+				return $plugin_url . 'backbone.min.js';
+			}
+
+			if ( preg_match( '#/react(\\.production\\.min|\\.min)?\\.js$#', $path ) ) {
+				return $plugin_url . 'react.min.js';
+			}
+
+			if ( preg_match( '#/react-dom(\\.production\\.min|\\.min)?\\.js$#', $path ) ) {
+				return $plugin_url . 'react-dom.min.js';
+			}
+
+			return apply_filters( 'ghateino_local_script_rewrite', '', $path, $original_src );
+		}
+
+		private function is_mixpanel_host( $host ) {
+			$mixpanel_hosts = [
+				'api-eu.mixpanel.com',
+				'api.mixpanel.com',
+				'cdn.mxpnl.com',
+				'api-js.mixpanel.com',
+			];
+
+			return in_array( $host, $mixpanel_hosts, true );
+		}
+
+		private function prepare_local_assets() {
+			$this->ensure_core_js_assets();
+			$this->ensure_dashicons_assets();
+			$this->ensure_eicons_assets();
+			$this->ensure_swiper_assets();
+		}
+
+		private function ensure_swiper_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$target_dir  = $plugin_base . 'assets/vendor/swiper/';
+			$target_js   = $target_dir . 'swiper-bundle.min.js';
+			$target_css  = $target_dir . 'swiper-bundle.min.css';
+
+			if ( file_exists( $target_js ) && file_exists( $target_css ) ) {
+				return;
+			}
+
+			$this->ensure_dir( $target_dir );
+
+			$source_js = $this->find_first_existing_file(
+				[
+					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/v8/swiper.min.js',
+					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/swiper.min.js',
+					ABSPATH . 'wp-includes/js/dist/vendor/swiper/swiper-bundle.min.js',
+				],
+				'swiper*.min.js'
+			);
+
+			$source_css = $this->find_first_existing_file(
+				[
+					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/v8/css/swiper.min.css',
+					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/swiper.min.css',
+					ABSPATH . 'wp-includes/css/dist/vendor/swiper/swiper-bundle.min.css',
+				],
+				'swiper*.min.css'
+			);
+
+			if ( $source_js && ! file_exists( $target_js ) ) {
+				@copy( $source_js, $target_js );
+			}
+
+			if ( $source_css && ! file_exists( $target_css ) ) {
+				@copy( $source_css, $target_css );
+			}
+		}
+
+		private function find_first_existing_file( $candidates, $file_pattern ) {
+			foreach ( $candidates as $candidate ) {
+				if ( is_file( $candidate ) ) {
+					return $candidate;
+				}
+			}
+
+			if ( ! is_dir( WP_CONTENT_DIR ) ) {
+				return '';
+			}
+
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( WP_CONTENT_DIR, FilesystemIterator::SKIP_DOTS )
+			);
+
+			foreach ( $iterator as $file_info ) {
+				if ( ! $file_info->isFile() ) {
+					continue;
+				}
+
+				if ( fnmatch( $file_pattern, $file_info->getFilename() ) ) {
+					return $file_info->getPathname();
+				}
+			}
+
+			return '';
+		}
+
+		private function ensure_core_js_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$target_base = $plugin_base . 'assets/vendor/wp-core-js/';
+
+			$asset_map = [
+				'jquery.min.js'         => ABSPATH . 'wp-includes/js/jquery/jquery.min.js',
+				'jquery-migrate.min.js' => ABSPATH . 'wp-includes/js/jquery/jquery-migrate.min.js',
+				'underscore.min.js'     => ABSPATH . 'wp-includes/js/underscore.min.js',
+				'backbone.min.js'       => ABSPATH . 'wp-includes/js/backbone.min.js',
+				'react.min.js'          => ABSPATH . 'wp-includes/js/dist/vendor/react.min.js',
+				'react-dom.min.js'      => ABSPATH . 'wp-includes/js/dist/vendor/react-dom.min.js',
+			];
+
+			$this->ensure_dir( $target_base );
+
+			foreach ( $asset_map as $target_name => $source_path ) {
+				$target_path = $target_base . $target_name;
+				if ( file_exists( $target_path ) ) {
+					continue;
+				}
+
+				if ( file_exists( $source_path ) ) {
+					@copy( $source_path, $target_path );
+				}
+			}
+		}
+
+		private function ensure_dashicons_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$target_css  = $plugin_base . 'assets/vendor/dashicons/css/dashicons.min.css';
+			$target_font = $plugin_base . 'assets/vendor/dashicons/fonts/';
+
+			if ( file_exists( $target_css ) && file_exists( $target_font . 'dashicons.woff2' ) ) {
+				return;
+			}
+
+			$source_css = ABSPATH . 'wp-includes/css/dashicons.min.css';
+			$source_dir = ABSPATH . 'wp-includes/fonts/';
+
+			if ( ! file_exists( $source_css ) || ! is_dir( $source_dir ) ) {
+				return;
+			}
+
+			$this->ensure_dir( dirname( $target_css ) );
+			$this->ensure_dir( $target_font );
+
+			@copy( $source_css, $target_css );
+
+			$font_files = [ 'dashicons.eot', 'dashicons.svg', 'dashicons.ttf', 'dashicons.woff', 'dashicons.woff2' ];
+			foreach ( $font_files as $font_file ) {
+				$source_file = $source_dir . $font_file;
+				if ( file_exists( $source_file ) ) {
+					@copy( $source_file, $target_font . $font_file );
+				}
+			}
+		}
+
+		private function ensure_eicons_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$target_css  = $plugin_base . 'assets/vendor/eicons/css/elementor-icons.min.css';
+			$target_font = $plugin_base . 'assets/vendor/eicons/fonts/';
+
+			if ( file_exists( $target_css ) ) {
+				return;
+			}
+
+			$source_base = WP_CONTENT_DIR . '/plugins/elementor/assets/lib/eicons/';
+			$source_css  = $source_base . 'css/elementor-icons.min.css';
+			$source_font = $source_base . 'fonts/';
+
+			$this->ensure_dir( dirname( $target_css ) );
+			$this->ensure_dir( $target_font );
+
+			if ( file_exists( $source_css ) ) {
+				@copy( $source_css, $target_css );
+			}
+
+			if ( is_dir( $source_font ) ) {
+				$font_files = glob( $source_font . '*' );
+				if ( is_array( $font_files ) ) {
+					foreach ( $font_files as $font_file ) {
+						if ( is_file( $font_file ) ) {
+							@copy( $font_file, $target_font . basename( $font_file ) );
+						}
+					}
+				}
+			}
+
+			if ( ! file_exists( $target_css ) ) {
+				$fallback_css = "/* Elementor eicons fallback placeholder */\n";
+				$fallback_css .= "@font-face{font-family:eicons;src:local('Arial');}\n";
+				$fallback_css .= "[class^=eicon-],[class*=\" eicon-\"]{font-family:eicons!important;}\n";
+				file_put_contents( $target_css, $fallback_css );
+			}
+		}
+
+		private function ensure_dir( $dir ) {
+			if ( ! is_dir( $dir ) ) {
+				wp_mkdir_p( $dir );
+			}
 		}
 
 		public function render_settings_page() {
@@ -284,6 +668,24 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 								<label>
 									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_gravatar]" value="yes" <?php checked( $settings['disable_gravatar'], 'yes' ); ?> />
 									مسدودسازی گراواتار و جایگزینی با عکس محلی
+								</label>
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row">جایگزینی CDN با فایل محلی:</th>
+							<td>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[local_asset_rewrite]" value="yes" <?php checked( $settings['local_asset_rewrite'], 'yes' ); ?> />
+									تلاش برای جایگزینی CDNهای رایج JS با نسخه محلی وردپرس (jQuery, React, Backbone, Underscore)
+								</label>
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row">مسدودسازی Mixpanel:</th>
+							<td>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[block_mixpanel]" value="yes" <?php checked( $settings['block_mixpanel'], 'yes' ); ?> />
+									مسدودسازی درخواست‌های Mixpanel (از جمله `api-eu.mixpanel.com`) و جایگزینی اسکریپت با نسخه خنثی محلی
 								</label>
 							</td>
 						</tr>
