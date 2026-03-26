@@ -1,0 +1,1 @@
+/* blocked external script by Ghateino */

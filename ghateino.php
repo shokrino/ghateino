@@ -236,6 +236,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'log_retention_days'  => $retention_days,
 				'local_asset_rewrite' => isset( $input['local_asset_rewrite'] ) ? 'yes' : 'no',
 				'block_mixpanel'      => isset( $input['block_mixpanel'] ) ? 'yes' : 'no',
+				'strict_asset_block'  => isset( $input['strict_asset_block'] ) ? 'yes' : 'no',
 			];
 		}
 
@@ -283,6 +284,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'log_retention_days' => '7',
 				'local_asset_rewrite'=> 'yes',
 				'block_mixpanel'     => 'yes',
+				'strict_asset_block' => 'yes',
 			];
 
 			return wp_parse_args( $saved, $defaults );
@@ -308,14 +310,15 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				return plugin_dir_url( __FILE__ ) . 'assets/js/mixpanel-stub.js';
 			}
 
-			if ( ! $this->is_known_cdn_host( $host ) ) {
-				return $src;
-			}
-
 			$replacement = $this->map_script_path_to_local( $path, $src );
 			if ( $replacement ) {
 				$this->log_request( $src, $host, 'cdn_rewritten_to_local' );
 				return $replacement;
+			}
+
+			if ( $this->should_block_external_assets( $host, $settings ) ) {
+				$this->log_request( $src, $host, 'blocked_external_script_no_local' );
+				return plugin_dir_url( __FILE__ ) . 'assets/js/blocked-asset.js';
 			}
 
 			return $src;
@@ -337,23 +340,73 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$host = strtolower( $host );
 			$path = strtolower( $path );
 
+			$replacement = $this->map_style_path_to_local( $path, $src, $host );
+			if ( $replacement ) {
+				return $replacement;
+			}
+
+			if ( $this->should_block_external_assets( $host, $settings ) ) {
+				$this->log_request( $src, $host, 'blocked_external_style_no_local' );
+				return plugin_dir_url( __FILE__ ) . 'assets/css/blocked-asset.css';
+			}
+
+			return $src;
+		}
+
+		private function map_style_path_to_local( $path, $original_src, $host ) {
+			$fontawesome_base_url = plugin_dir_url( __FILE__ ) . 'assets/vendor/fontawesome/css/';
+			$fontawesome_base_dir = plugin_dir_path( __FILE__ ) . 'assets/vendor/fontawesome/css/';
+
+			if ( strpos( $path, 'fontawesome-free' ) !== false && strpos( $path, '/all.min.css' ) !== false && file_exists( $fontawesome_base_dir . 'all.min.css' ) ) {
+				$this->log_request( $original_src, $host, 'fontawesome_all_rewritten_to_local' );
+				return $fontawesome_base_url . 'all.min.css';
+			}
+
+			if ( strpos( $path, 'fontawesome-free' ) !== false && strpos( $path, '/v4-shims.min.css' ) !== false && file_exists( $fontawesome_base_dir . 'v4-shims.min.css' ) ) {
+				$this->log_request( $original_src, $host, 'fontawesome_shims_rewritten_to_local' );
+				return $fontawesome_base_url . 'v4-shims.min.css';
+			}
+
+			if ( 'fonts.googleapis.com' === $host && strpos( $path, '/css2' ) !== false ) {
+				$roboto_css = plugin_dir_path( __FILE__ ) . 'assets/vendor/google-fonts/roboto.css';
+				if ( file_exists( $roboto_css ) ) {
+					$this->log_request( $original_src, $host, 'google_fonts_rewritten_to_local' );
+					return plugin_dir_url( __FILE__ ) . 'assets/vendor/google-fonts/roboto.css';
+				}
+			}
+
 			$swiper_css_path = plugin_dir_path( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.css';
 			if ( preg_match( '#/swiper(-bundle)?(\\.min)?\\.css$#', $path ) && file_exists( $swiper_css_path ) ) {
-				$this->log_request( $src, $host, 'swiper_rewritten_to_local' );
+				$this->log_request( $original_src, $host, 'swiper_rewritten_to_local' );
 				return plugin_dir_url( __FILE__ ) . 'assets/vendor/swiper/swiper-bundle.min.css';
 			}
 
 			if ( strpos( $path, 'dashicons' ) !== false ) {
-				$this->log_request( $src, $host, 'dashicons_rewritten_to_local' );
+				$this->log_request( $original_src, $host, 'dashicons_rewritten_to_local' );
 				return plugin_dir_url( __FILE__ ) . 'assets/vendor/dashicons/css/dashicons.min.css';
 			}
 
 			if ( strpos( $path, 'eicons' ) !== false || strpos( $path, 'elementor-icons' ) !== false ) {
-				$this->log_request( $src, $host, 'eicons_rewritten_to_local' );
+				$this->log_request( $original_src, $host, 'eicons_rewritten_to_local' );
 				return plugin_dir_url( __FILE__ ) . 'assets/vendor/eicons/css/elementor-icons.min.css';
 			}
 
-			return $src;
+			return '';
+		}
+
+		private function should_block_external_assets( $host, $settings ) {
+			if ( 'yes' !== $settings['strict_asset_block'] ) {
+				return false;
+			}
+
+			$site_host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+			$site_host = strtolower( $site_host );
+
+			if ( '' === $site_host ) {
+				return $this->is_known_cdn_host( $host );
+			}
+
+			return $host !== $site_host;
 		}
 
 		private function is_known_cdn_host( $host ) {
@@ -425,6 +478,39 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$this->ensure_dashicons_assets();
 			$this->ensure_eicons_assets();
 			$this->ensure_swiper_assets();
+			$this->ensure_fontawesome_assets();
+			$this->ensure_google_fonts_assets();
+			$this->ensure_block_fallback_assets();
+		}
+
+		private function ensure_block_fallback_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$this->ensure_dir( $plugin_base . 'assets/js/' );
+			$this->ensure_dir( $plugin_base . 'assets/css/' );
+
+			$blocked_js = $plugin_base . 'assets/js/blocked-asset.js';
+			if ( ! file_exists( $blocked_js ) ) {
+				file_put_contents( $blocked_js, "/* blocked external script by Ghateino */\n" );
+			}
+
+			$blocked_css = $plugin_base . 'assets/css/blocked-asset.css';
+			if ( ! file_exists( $blocked_css ) ) {
+				file_put_contents( $blocked_css, "/* blocked external style by Ghateino */\n" );
+			}
+		}
+
+		private function ensure_fontawesome_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$target_css_dir = $plugin_base . 'assets/vendor/fontawesome/css/';
+			$target_webfonts_dir = $plugin_base . 'assets/vendor/fontawesome/webfonts/';
+
+			$this->ensure_dir( $target_css_dir );
+			$this->ensure_dir( $target_webfonts_dir );
+		}
+
+		private function ensure_google_fonts_assets() {
+			$plugin_base = plugin_dir_path( __FILE__ );
+			$this->ensure_dir( $plugin_base . 'assets/vendor/google-fonts/' );
 		}
 
 		private function ensure_swiper_assets() {
@@ -686,6 +772,15 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 								<label>
 									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[block_mixpanel]" value="yes" <?php checked( $settings['block_mixpanel'], 'yes' ); ?> />
 									مسدودسازی درخواست‌های Mixpanel (از جمله `api-eu.mixpanel.com`) و جایگزینی اسکریپت با نسخه خنثی محلی
+								</label>
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row">بلاک سختگیرانه Asset خارجی:</th>
+							<td>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[strict_asset_block]" value="yes" <?php checked( $settings['strict_asset_block'], 'yes' ); ?> />
+									اولویت مطلق با لوکال: اگر CSS/JS خارجی قابل جایگزینی نبود، سریع بلاک شود تا کندی ایجاد نشود
 								</label>
 							</td>
 						</tr>
