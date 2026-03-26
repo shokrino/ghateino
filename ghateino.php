@@ -52,10 +52,6 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$settings = $this->get_settings();
 			$mode     = $settings['mode'];
 
-			if ( $this->is_elementor_editor_context() ) {
-				return $preempt;
-			}
-
 			if ( $mode === 'disabled' ) {
 				return $preempt;
 			}
@@ -403,12 +399,15 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				return false;
 			}
 
-			if ( $this->is_elementor_editor_context() ) {
+			if ( ! $this->is_known_cdn_host( $host ) && ! $this->is_mixpanel_host( $host ) ) {
 				return false;
 			}
 
-			if ( ! $this->is_known_cdn_host( $host ) && ! $this->is_mixpanel_host( $host ) ) {
-				return false;
+			if ( isset( $settings['mode'] ) && 'whitelist' === $settings['mode'] ) {
+				$whitelist = array_map( 'trim', explode( "\n", (string) ( $settings['whitelist'] ?? '' ) ) );
+				if ( in_array( strtolower( $host ), $whitelist, true ) ) {
+					return false;
+				}
 			}
 
 			$site_host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
@@ -419,28 +418,6 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			return $host !== $site_host;
-		}
-
-		private function is_elementor_editor_context() {
-			if ( ! is_admin() ) {
-				return false;
-			}
-
-			$action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
-			$page   = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-
-			if ( 'elementor' === $action || 'elementor' === $page || isset( $_GET['elementor-preview'] ) ) {
-				return true;
-			}
-
-			if ( wp_doing_ajax() ) {
-				$ajax_action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
-				if ( false !== strpos( $ajax_action, 'elementor' ) ) {
-					return true;
-				}
-			}
-
-			return false;
 		}
 
 		private function is_known_cdn_host( $host ) {
