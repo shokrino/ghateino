@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ghateino
  * Description: در شرایط قطعی اینترنت یا نیاز به قطع کردن درخواست ها به وبسایت های خاص بهترین گزینه شما افزونه قطعینو هست
- * Version: 1.1.0
+ * Version: 1.1.1
  * Plugin URI: https://shokrino.com
  * Author: Shokrino Team
  * Author URI: https://shokrino.com
@@ -37,8 +37,10 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$this->prepare_local_assets();
 
 			add_filter( 'pre_http_request', [ $this, 'filter_http_requests' ], 10, 3 );
+			add_filter( 'http_request_args', [ $this, 'enforce_request_timeout' ], 20, 2 );
 
 			add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
+			add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), [ $this, 'plugin_action_links' ] );
 			add_action( 'admin_init', [ $this, 'register_settings' ] );
 			add_action( 'admin_init', [ $this, 'handle_clear_logs' ] );
 			add_action( 'wp_dashboard_setup', [ $this, 'register_dashboard_widget' ] );
@@ -94,6 +96,67 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			return $preempt;
+		}
+
+		public function enforce_request_timeout( $args, $url ) {
+			$settings = $this->get_settings();
+
+			if ( 'yes' !== $settings['enable_timeout_guard'] ) {
+				return $args;
+			}
+
+			$timeout_limit = $this->normalize_timeout_limit( $settings['max_request_timeout'] ?? '3' );
+			if ( $timeout_limit <= 0 ) {
+				return $args;
+			}
+
+			$host = (string) wp_parse_url( $url, PHP_URL_HOST );
+			if ( '' !== $host && $this->is_local_host( $host ) ) {
+				return $args;
+			}
+
+			$current_timeout = isset( $args['timeout'] ) ? (float) $args['timeout'] : 0;
+			if ( $current_timeout > 0 && $current_timeout <= $timeout_limit ) {
+				return $args;
+			}
+
+			$args['timeout'] = $timeout_limit;
+
+			if ( '' !== $host ) {
+				$this->log_request( $url, strtolower( $host ), 'timeout_limited_' . (string) $timeout_limit . 's' );
+			}
+
+			return $args;
+		}
+
+		private function normalize_timeout_limit( $raw_timeout ) {
+			$timeout = (int) $raw_timeout;
+
+			if ( $timeout < 1 ) {
+				return 1;
+			}
+
+			if ( $timeout > 30 ) {
+				return 30;
+			}
+
+			return $timeout;
+		}
+
+		private function is_local_host( $host ) {
+			$host = strtolower( trim( (string) $host ) );
+			if ( '' === $host ) {
+				return true;
+			}
+
+			if ( in_array( $host, [ 'localhost', '127.0.0.1', '::1' ], true ) ) {
+				return true;
+			}
+
+			$site_host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+			$site_host = strtolower( trim( $site_host ) );
+
+			return '' !== $site_host && $host === $site_host;
 		}
 
 		private function log_request( $url, $host, $mode ) {
@@ -207,6 +270,16 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			);
 		}
 
+		public function plugin_action_links( $links ) {
+			$settings_url = admin_url( 'options-general.php?page=ghateino' );
+			$custom_links = [
+				'<a href="' . esc_url( $settings_url ) . '">تنظیمات</a>',
+				'<a href="https://shokrino.com" target="_blank" rel="noopener noreferrer">سایت توسعه دهنده</a>',
+			];
+
+			return array_merge( $custom_links, $links );
+		}
+
 
 		public function register_settings() {
 			register_setting(
@@ -234,6 +307,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				$retention_days = '7';
 			}
 
+			$max_request_timeout = isset( $input['max_request_timeout'] ) ? (string) $this->normalize_timeout_limit( $input['max_request_timeout'] ) : '3';
+
 			return [
 				'mode'                => $mode,
 				'whitelist'           => $this->sanitize_host_list( $input['whitelist'] ?? '' ),
@@ -247,6 +322,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'local_asset_rewrite' => isset( $input['local_asset_rewrite'] ) ? 'yes' : 'no',
 				'block_mixpanel'      => isset( $input['block_mixpanel'] ) ? 'yes' : 'no',
 				'strict_asset_block'  => isset( $input['strict_asset_block'] ) ? 'yes' : 'no',
+				'enable_timeout_guard'=> isset( $input['enable_timeout_guard'] ) ? 'yes' : 'no',
+				'max_request_timeout' => $max_request_timeout,
 			];
 		}
 
@@ -649,6 +726,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'local_asset_rewrite'=> 'yes',
 				'block_mixpanel'     => 'yes',
 				'strict_asset_block' => 'yes',
+				'enable_timeout_guard'=> 'no',
+				'max_request_timeout'=> '3',
 			];
 
 			return wp_parse_args( $saved, $defaults );
@@ -1085,17 +1164,64 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			?>
 			<div class="wrap">
-				<h1>تنظیمات پیشرفته افزونه قطعینو</h1>
+				<h1>تنظیمات افزونه قطعینو</h1>
+				<style>
+					.ghateino-card {
+						background: #ffffff;
+						border-radius: 14px;
+						padding: 18px 20px;
+						box-shadow: 0 6px 20px rgba(16, 24, 40, 0.06);
+						margin-bottom: 18px;
+						max-width: 980px;
+					}
+
+					.ghateino-guide {
+						background: #0096ff;
+						color: #fff;
+					}
+
+					.ghateino-form-table th {
+						width: 260px;
+					}
+
+					.ghateino-settings-form input[type="text"],
+					.ghateino-settings-form input[type="number"],
+					.ghateino-settings-form textarea,
+					.ghateino-settings-form select {
+						border-radius: 10px;
+						border-color: #cfd6de;
+					}
+
+					.ghateino-section-title {
+						font-size: 16px;
+						padding-bottom: 10px;
+						margin: 0 0 10px;
+						border-bottom: 1px solid #e7ecf2;
+					}
+				</style>
+
+				<div class="ghateino-card ghateino-guide" style="margin-top:14px;">
+					<p style="margin:0 0 8px;"><strong>راهنمای سریع کار با افزونه:</strong></p>
+					<p style="margin:0 0 6px;">1) اگر می خواهید با خیال راحت شروع کنید، حالت «غیرفعال» مناسب است و سایت بدون محدودیت روی هیچ دامنه ای کار می کند.</p>
+					<p style="margin:0 0 6px;">2) اگر اینترنت بین الملل ناپایدار است، حالت «لیست سفید» کمک می کند فقط سرویس های ضروری سایت شما فعال بمانند. آنهارا بسته به نیاز به لیست اضافه کنید.</p>
+					<p style="margin:0 0 6px;">3) برای بهتر شدن سرعت در زمان اختلال، «محدودسازی Timeout» را روشن کنید و مقدار 3 ثانیه را امتحان کنید.</p>
+					<p style="margin:0;">4) اگر سرویس خاصی مثل پرداخت یا پیامک دیر پاسخ می دهد، مقدار Timeout را کمی بیشتر کنید (مثلا 5 ثانیه).</p>
+				</div>
+
+				<div class="ghateino-card" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+					<a class="button button-secondary" href="https://ble.ir/shokrino" target="_blank" rel="noopener noreferrer">کانال پیامرسان بله توسعه دهنده</a>
+					<span class="description">برای راهنماها و اطلاعیه های جدید در زمانی که صرفا پیامرسان های داخلی دردسترس هست کانال ما را دنبال کنید.</span>
+				</div>
 
 				<?php if ( isset( $_GET['logs_cleared'] ) ) : ?>
 					<div class="notice notice-success is-dismissible"><p>لاگ‌ها با موفقیت پاک شدند.</p></div>
 				<?php endif; ?>
 
-				<form method="post" action="options.php" style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); margin-bottom: 20px;">
+				<form method="post" action="options.php" class="ghateino-card ghateino-settings-form">
 					<?php settings_fields( 'ghateino_group' ); ?>
 					
-					<h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">تنظیمات اصلی فایروال</h2>
-					<table class="form-table">
+					<h2 class="ghateino-section-title">تنظیمات اصلی فایروال</h2>
+					<table class="form-table ghateino-form-table">
 						<tr valign="top">
 							<th scope="row">حالت کاری فایروال:</th>
 							<td>
@@ -1135,8 +1261,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 						</tr>
 					</table>
 
-					<h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 30px;">تنظیمات امکانات جانبی</h2>
-					<table class="form-table">
+					<h2 class="ghateino-section-title" style="margin-top: 20px;">تنظیمات امکانات جانبی</h2>
+					<table class="form-table ghateino-form-table">
 						<tr valign="top">
 							<th scope="row">تلمتری وردپرس:</th>
 							<td>
@@ -1192,6 +1318,23 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 							</td>
 						</tr>
 						<tr valign="top">
+							<th scope="row">محدودسازی Timeout درخواست‌های خارجی:</th>
+							<td>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_timeout_guard]" value="yes" <?php checked( $settings['enable_timeout_guard'], 'yes' ); ?> />
+									فعال‌سازی سقف زمان برای درخواست‌های HTTP خارجی
+								</label>
+								<p class="description" style="margin-top:6px;">اگر timeout درخواست بیشتر از مقدار زیر باشد، کاهش داده می‌شود تا درخواست‌های کند سریع‌تر fail شوند.</p>
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row">حداکثر Timeout (ثانیه):</th>
+							<td>
+								<input type="number" min="1" max="30" step="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[max_request_timeout]" value="<?php echo esc_attr( $settings['max_request_timeout'] ); ?>" style="width:100px;" />
+								<p class="description">پیشنهاد: ۳ ثانیه. پیش‌فرض افزونه روی ۳ است ولی این قابلیت برای حفظ سازگاری نسخه‌های قبلی به‌صورت پیش‌فرض غیرفعال است.</p>
+							</td>
+						</tr>
+						<tr valign="top">
 							<th scope="row">لینک جایگزین گراواتار:</th>
 							<td>
 								<input type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[gravatar_url]" value="<?php echo esc_url( $settings['gravatar_url'] ); ?>" style="width: 400px;" />
@@ -1200,8 +1343,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 						</tr>
 					</table>
 
-					<h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 30px;">تنظیمات لاگ (گزارش‌گیری)</h2>
-					<table class="form-table">
+					<h2 class="ghateino-section-title" style="margin-top: 20px;">تنظیمات لاگ (گزارش‌گیری)</h2>
+					<table class="form-table ghateino-form-table">
 						<tr valign="top">
 							<th scope="row">ثبت لاگ درخواست‌ها:</th>
 							<td>
@@ -1268,7 +1411,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 					});
 				</script>
 
-				<details style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); margin-bottom: 20px;">
+				<details class="ghateino-card">
 					<summary style="font-size: 1.2em; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
 						<span>مشاهده لاگ درخواست‌های مسدود شده (کلیک کنید)</span>
 					</summary>
