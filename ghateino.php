@@ -15,6 +15,16 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/*
+این افزونه توسط تیم شکرینو و متین شکری بصورت رایگان باتوجه به شرایط اینترنت طراحی شده
+به هیچ عنوان کپی از این محصول چه بصورت رایگان و چه بصورت شامل هزینه نباید انجام بشه و منتشر بشه
+
+رایگان بودن این افزونه به معنای کپی آزاد نیست!
+
+فقط با اسم قطعینو بصورت رایگان از سایت شکرینو و گیت هاب شکرینو قابل دریافت هست
+*/
+
+
 if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 	final class Ghateino_HTTP_Control {
@@ -71,13 +81,13 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			if ( $mode === 'whitelist' ) {
 				$whitelist = array_map( 'trim', explode( "\n", $settings['whitelist'] ) );
-				if ( ! in_array( $host, $whitelist, true ) ) {
+				if ( ! $this->host_in_list( $host, $whitelist ) ) {
 					$this->log_request( $url, $host, 'blocked_by_whitelist_mode' );
 					return new WP_Error( 'ghateino_blocked', 'Blocked by Ghateino Whitelist Mode' );
 				}
 			} elseif ( $mode === 'blacklist' ) {
 				$blacklist = array_map( 'trim', explode( "\n", $settings['blacklist'] ) );
-				if ( in_array( $host, $blacklist, true ) ) {
+				if ( $this->host_in_list( $host, $blacklist ) ) {
 					$this->log_request( $url, $host, 'blocked_by_blacklist_mode' );
 					return new WP_Error( 'ghateino_blocked', 'Blocked by Ghateino Blacklist Mode' );
 				}
@@ -269,6 +279,360 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			return implode( "\n", $hosts );
 		}
 
+		private function host_in_list( $host, $domains ) {
+			$host = strtolower( trim( (string) $host ) );
+			if ( '' === $host || ! is_array( $domains ) ) {
+				return false;
+			}
+
+			foreach ( $domains as $domain ) {
+				$domain = strtolower( trim( (string) $domain ) );
+				if ( '' === $domain ) {
+					continue;
+				}
+
+				if ( $host === $domain ) {
+					return true;
+				}
+
+				$suffix = '.' . $domain;
+				if ( strlen( $host ) > strlen( $domain ) && substr( $host, -strlen( $suffix ) ) === $suffix ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private function get_quick_whitelist_presets() {
+			$category_presets = [
+				[
+					'label'   => 'زیرساخت و CDN ایرانی',
+					'domains' => $this->get_iranian_cdn_infra_domains(),
+				],
+				[
+					'label'   => 'نقشه و مسیریابی',
+					'domains' => $this->get_iranian_map_domains(),
+				],
+				[
+					'label'   => 'تبلیغات و آنالیتیکس',
+					'domains' => $this->get_iranian_ads_domains(),
+				],
+				[
+					'label'   => 'هاستینگ ایرانی',
+					'domains' => $this->get_iranian_hosting_domains(),
+				],
+				[
+					'label'   => 'وبسایت های ایرانی پرکاربرد',
+					'domains' => $this->get_iranian_popular_sites_domains(),
+				],
+				[
+					'label'   => 'سرویس های دولتی و اعتماد',
+					'domains' => $this->get_iranian_gov_trust_domains(),
+				],
+				[
+					'label'   => 'فونت، ایمیل و مارکت های ایرانی',
+					'domains' => $this->get_iranian_misc_domains(),
+				],
+				[
+					'label'   => 'لایسنس افزونه و قالب ایرانی',
+					'domains' => $this->get_license_vendor_domains(),
+				],
+				[
+					'label'   => 'شرکت های PSP شاپرک',
+					'domains' => $this->get_psp_domains(),
+				],
+				[
+					'label'   => 'پرداخت یارها (درگاه ها)',
+					'domains' => $this->get_paymentyar_domains(),
+				],
+				[
+					'label'   => 'پرداخت اقساطی',
+					'domains' => $this->get_installment_payment_api_domains(),
+				],
+				[
+					'label'   => 'پیامرسان های داخلی',
+					'domains' => $this->get_iranian_messenger_api_domains(),
+				],
+				[
+					'label'   => 'پنل های پیامکی',
+					'domains' => $this->get_sms_panel_api_domains(),
+				],
+				[
+					'label'   => 'سرویس های ارسال پستی و پیک',
+					'domains' => $this->get_shipping_api_domains(),
+				],
+			];
+
+			$all_domains = [];
+			foreach ( $category_presets as $preset ) {
+				if ( ! empty( $preset['domains'] ) && is_array( $preset['domains'] ) ) {
+					$all_domains = array_merge( $all_domains, $preset['domains'] );
+				}
+			}
+
+			$aggregate_preset = [
+				'label'   => 'همه دامنه ها اضافه شود',
+				'domains' => array_values( array_unique( $all_domains ) ),
+			];
+
+			return array_merge( [ $aggregate_preset ], $category_presets );
+		}
+
+		private function get_license_vendor_domains() {
+			return [
+				'shokrino.com',
+				'api.shokrino.com',
+				'abzarwp.com',
+				'api.abzarwp.com',
+				'cdn.abzarwp.com',
+				'dl.abzarwp.com',
+				'zhaket.com',
+				'api.zhaket.com',
+				'cdn.zhaket.com',
+				'files.zhaket.com',
+				'rtl-theme.com',
+				'api.rtl-theme.com',
+				'cdn.rtl-theme.com',
+				'dl.rtl-theme.com',
+			];
+		}
+
+		private function get_psp_domains() {
+			return [
+				'pep.co.ir',
+				'sep.ir',
+				'pna.co.ir',
+				'pec.ir',
+				'sadadpsp.ir',
+				'omidpayment.ir',
+				'fanavacard.ir',
+				'sepehrpay.com',
+				'irankish.com',
+				'behpardakht.com',
+				'ecd-co.ir',
+				'asanpardakht.ir',
+			];
+		}
+
+		private function get_paymentyar_domains() {
+			return [
+				'zarinpal.com',
+				'www.zarinpal.com',
+				'api.zarinpal.com',
+				'nextpay.org',
+				'api.nextpay.org',
+				'idpay.ir',
+				'api.idpay.ir',
+				'pay.ir',
+				'api.pay.ir',
+				'vandar.io',
+				'api.vandar.io',
+				'jibit.ir',
+				'api.jibit.ir',
+				'zibal.ir',
+				'api.zibal.ir',
+				'payping.ir',
+				'api.payping.ir',
+			];
+		}
+
+		private function get_installment_payment_api_domains() {
+			return [
+				'digipay.ir',
+				'api.digipay.ir',
+				'mydigipay.com',
+				'api.mydigipay.com',
+				'azkivam.com',
+				'api.azkivam.com',
+				'torob.com',
+				'api.torob.com',
+				'torobpay.com',
+				'api.torobpay.com',
+				'snappay.ir',
+				'api.snappay.ir',
+				'lendo.ir',
+				'api.lendo.ir',
+				'tara360.com',
+				'api.tara360.com',
+			];
+		}
+
+		private function get_iranian_messenger_api_domains() {
+			return [
+				'bale.ai',
+				'safir.bale.ai',
+				'tapi.bale.ai',
+				'api.bale.ai',
+				'botapi.bale.ai',
+				'eitaa.com',
+				'api.eitaa.com',
+				'rubika.ir',
+				'api.rubika.ir',
+				'splus.ir',
+				'api.splus.ir',
+				'gap.im',
+				'api.gap.im',
+				'igap.net',
+				'api.igap.net',
+				'soroush-app.ir',
+				'api.soroush-app.ir',
+			];
+		}
+
+		private function get_sms_panel_api_domains() {
+			return [
+				'kavenegar.com',
+				'api.kavenegar.com',
+				'avanak.ir',
+				'portal.avanak.ir',
+				'sms.ir',
+				'api.sms.ir',
+				'ghasedak.me',
+				'api.ghasedak.me',
+				'gateway.ghasedak.me',
+				'melipayamak.com',
+				'api.melipayamak.com',
+				'api.payamak-panel.com',
+				'rest.payamak-panel.com',
+				'ippanel.com',
+				'api2.ippanel.com',
+				'edge.ippanel.com',
+				'limosms.com',
+				'api.limosms.com',
+				'farazsms.com',
+				'api.farazsms.com',
+				'api.iranpayamak.com',
+				'api.sabanovin.com',
+				'api.sms-webservice.com',
+				'smspanel.trez.ir',
+				'magfa.com',
+				'sms.magfa.com',
+				'payamresan.com',
+				'api.payamresan.com',
+			];
+		}
+
+		private function get_shipping_api_domains() {
+			return [
+				'post.ir',
+				'api.post.ir',
+				'ecommerce.post.ir',
+				'tipaxco.com',
+				'api.tipaxco.com',
+				'chaparnet.com',
+				'api.chaparnet.com',
+				'postex.ir',
+				'api.postex.ir',
+				'mahex.com',
+				'api.mahex.com',
+				'alopeyk.com',
+				'api.alopeyk.com',
+				'miare.co',
+				'api.miare.co',
+			];
+		}
+
+		private function get_iranian_cdn_infra_domains() {
+			return [
+				'cdn.arvancloud.ir',
+				'static.arvancloud.ir',
+				'arvancloud.ir',
+				'arvancloud.com',
+				'cdn.arvancloud.com',
+				'parspack.com',
+				'cdn.parspack.com',
+				'abr.ir',
+			];
+		}
+
+		private function get_iranian_map_domains() {
+			return [
+				'neshan.org',
+				'api.neshan.org',
+				'cedarmaps.com',
+				'api.cedarmaps.com',
+				'map.ir',
+				'balad.ir',
+				'api.balad.ir',
+			];
+		}
+
+		private function get_iranian_ads_domains() {
+			return [
+				'yektanet.com',
+				'cdn.yektanet.com',
+				'tapsell.ir',
+				'adivery.ir',
+				'mediaad.org',
+			];
+		}
+
+		private function get_iranian_hosting_domains() {
+			return [
+				'mizbanfa.com',
+				'hostiran.net',
+				'hostiran.com',
+				'netafraz.com',
+				'limoo.host',
+				'iran.liara.run',
+				'liara.run',
+				'darkube.app',
+				'hamravesh.com',
+				'fandogh.cloud',
+				'sotoon.ir',
+			];
+		}
+
+		private function get_iranian_popular_sites_domains() {
+			return [
+				'digikala.com',
+				'api.digikala.com',
+				'divar.ir',
+				'api.divar.ir',
+				'torob.com',
+				'api.torob.com',
+				'snapp.ir',
+				'tapsi.ir',
+				'aparat.com',
+				'filimo.com',
+				'namava.ir',
+				'telewebion.com',
+				'rubika.ir',
+				'bale.ai',
+				'eitaa.com',
+				'gap.im',
+				'igap.net',
+				'soroush-app.ir',
+			];
+		}
+
+		private function get_iranian_gov_trust_domains() {
+			return [
+				'nic.ir',
+				'irnic.ir',
+				'enamad.ir',
+				'samandehi.ir',
+			];
+		}
+
+		private function get_iranian_misc_domains() {
+			return [
+				'chmail.ir',
+				'parsmail.com',
+				'v1.fontapi.ir',
+				'fonts.irfonts.ir',
+				'cdn.fontiran.com',
+				'fontiran.com',
+				'cafebazaar.ir',
+				'myket.ir',
+				'charkhoneh.com',
+				'sibche.com',
+				'virgool.io',
+				'zoomit.ir',
+			];
+		}
+
 		private function get_settings() {
 			$saved = get_option( self::OPTION_KEY, [] );
 
@@ -405,7 +769,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			if ( isset( $settings['mode'] ) && 'whitelist' === $settings['mode'] ) {
 				$whitelist = array_map( 'trim', explode( "\n", (string) ( $settings['whitelist'] ?? '' ) ) );
-				if ( in_array( strtolower( $host ), $whitelist, true ) ) {
+				if ( $this->host_in_list( $host, $whitelist ) ) {
 					return false;
 				}
 			}
@@ -717,6 +1081,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$settings = $this->get_settings();
 			$logs     = get_option( self::LOG_KEY, [] );
 			$clear_url = wp_nonce_url( admin_url( 'options-general.php?page=ghateino&clear_logs=1' ), 'ghateino_clear_logs' );
+			$quick_presets = $this->get_quick_whitelist_presets();
 
 			?>
 			<div class="wrap">
@@ -744,7 +1109,22 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 						<tr valign="top">
 							<th scope="row">لیست سفید (Whitelist):<br><small>هر دامنه در یک خط (مثال: api.shokrino.com)</small></th>
 							<td>
-								<textarea name="<?php echo esc_attr( self::OPTION_KEY ); ?>[whitelist]" rows="5" style="width: 400px;"><?php echo esc_textarea( $settings['whitelist'] ); ?></textarea>
+								<textarea id="ghateino-whitelist-textarea" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[whitelist]" rows="5" style="width: 400px;"><?php echo esc_textarea( $settings['whitelist'] ); ?></textarea>
+								<div style="margin-top: 10px;">
+									<p class="description" style="margin-bottom: 8px;"><strong>افزودن سریع سایت های رایج به لیست سفید:</strong></p>
+									<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+										<?php foreach ( $quick_presets as $preset ) : ?>
+											<button
+												type="button"
+												class="button button-secondary ghateino-quick-whitelist"
+												data-domains="<?php echo esc_attr( implode( ',', $preset['domains'] ) ); ?>"
+											>
+												<?php echo esc_html( $preset['label'] ); ?>
+											</button>
+										<?php endforeach; ?>
+									</div>
+									<p class="description" style="margin-top: 8px;">با کلیک روی هر دکمه، دامنه های همان دسته به لیست سفید اضافه می شود (بدون ثبت تکراری).</p>
+								</div>
 							</td>
 						</tr>
 						<tr valign="top">
@@ -848,6 +1228,45 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 					
 					<?php submit_button( 'ذخیره تمامی تنظیمات' ); ?>
 				</form>
+
+				<script>
+					document.addEventListener('DOMContentLoaded', function () {
+						var textarea = document.getElementById('ghateino-whitelist-textarea');
+						if (!textarea) {
+							return;
+						}
+
+						var quickButtons = document.querySelectorAll('.ghateino-quick-whitelist');
+						quickButtons.forEach(function (button) {
+							button.addEventListener('click', function () {
+								var currentLines = textarea.value
+									.split(/\r?\n/)
+									.map(function (line) { return line.trim().toLowerCase(); })
+									.filter(Boolean);
+
+								var map = {};
+								currentLines.forEach(function (domain) {
+									map[domain] = true;
+								});
+
+								var domains = (button.getAttribute('data-domains') || '')
+									.split(',')
+									.map(function (domain) { return domain.trim().toLowerCase(); })
+									.filter(Boolean);
+
+								domains.forEach(function (domain) {
+									if (!map[domain]) {
+										currentLines.push(domain);
+										map[domain] = true;
+									}
+								});
+
+								textarea.value = currentLines.join('\n');
+								textarea.dispatchEvent(new Event('change'));
+							});
+						});
+					});
+				</script>
 
 				<details style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); margin-bottom: 20px;">
 					<summary style="font-size: 1.2em; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">

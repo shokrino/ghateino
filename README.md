@@ -1,62 +1,123 @@
 # Ghateino (قطعینو)
 
-افزونه `Ghateino` برای مدیریت درخواست‌های خروجی وردپرس، کاهش وابستگی به CDN، و پایدار نگه داشتن سایت در شرایط قطع یا محدودیت اینترنت طراحی شده است.
+`Ghateino` یک افزونه WordPress با تمرکز روی پایداری شبکه است: کاهش وابستگی به CDN، کنترل خروجی HTTP، و جلوگیری از کندی ناشی از اتصال ناپایدار.
 
-رویکرد جدید افزونه: `Local First + Block Fast`
+رویکرد اصلی پروژه:
 
-- اگر asset خارجی معادل لوکال داشته باشد، با اولویت بالا جایگزین می‌شود.
-- اگر معادل لوکال نداشته باشد و حالت سخت‌گیرانه فعال باشد، سریع بلاک می‌شود تا کندی شبکه ایجاد نشود.
+`Local First + Block Fast`
 
-## امکانات اصلی
+- اگر برای asset خارجی نسخه محلی داشته باشیم، فوری rewrite می‌شود.
+- اگر نسخه محلی نداشته باشیم و حالت سخت‌گیرانه فعال باشد، درخواست بلاک می‌شود.
 
-- مدیریت درخواست‌های HTTP خروجی با سه حالت:
+---
+
+## چرا Ghateino؟
+
+در محیط‌هایی که دسترسی اینترنت متغیر یا محدود است، وابستگی مستقیم به CDN می‌تواند Time To Interactive را نابود کند. `Ghateino` به‌جای retryهای طولانی، مسیر deterministic می‌دهد:
+
+- اولویت با فایل محلی
+- fallback امن داخلی
+- بلاک سریع درخواست‌های بدون نگاشت
+
+نتیجه: رفتار قابل پیش‌بینی‌تر فرانت‌اند، کاهش timeoutهای آزاردهنده، و تجربه کاربری پایدارتر.
+
+---
+
+## Feature Highlights
+
+### 1) کنترل درخواست‌های HTTP خروجی
+
+سه حالت عملیاتی:
+
 - `disabled`: بدون محدودیت
 - `whitelist`: فقط دامنه‌های مجاز
 - `blacklist`: مسدودسازی دامنه‌های مشخص
+
+امکانات تکمیلی:
+
 - غیرفعال‌سازی telemetry وردپرس (`wordpress.org`)
-- غیرفعال‌سازی بررسی آپدیت هسته، قالب و افزونه
-- غیرفعال‌سازی Gravatar و جایگزینی با تصویر محلی
-- ثبت لاگ درخواست‌های مسدودشده با نگهداری زمان‌دار
-- پاک‌سازی لاگ‌ها از پنل تنظیمات
+- غیرفعال‌سازی بررسی آپدیت هسته/قالب/افزونه
+- غیرفعال‌سازی Gravatar + جایگزینی تصویر محلی
+- ثبت لاگ درخواست‌های مسدودشده با retention قابل تنظیم
 
-## امکانات اضافه‌شده برای لوکال‌سازی Assetها
+### 2) Local Asset Rewriting
 
-- جایگزینی خودکار اسکریپت‌های CDN با نسخه لوکال داخل پلاگین:
-- `jquery.min.js`
-- `jquery-migrate.min.js`
-- `underscore.min.js`
-- `backbone.min.js`
-- `react.min.js`
-- `react-dom.min.js`
-- جایگزینی خودکار `Swiper` JS/CSS با نسخه لوکال
-- جایگزینی خودکار `Font Awesome` CSS با نسخه لوکال:
-- `all.min.css`
-- `v4-shims.min.css`
-- `ace.min.js`
-- `ext-language_tools.js`
-- جایگزینی `Google Fonts (Roboto)` با CSS/Font لوکال
-- جایگزینی `dashicons` با فایل‌های لوکال (CSS + فونت)
-- جایگزینی `eicons` (Elementor Icons) با فایل‌های لوکال (CSS + فونت)
-- آماده‌سازی خودکار فایل‌های لوکال در اجرای افزونه (در صورت وجود منبع محلی)
+جایگزینی خودکار CDN با فایل‌های local plugin:
 
-## بلاک سریع Asset خارجی
+- WP Core JS: `jquery`, `jquery-migrate`, `underscore`, `backbone`, `react`, `react-dom`
+- `Swiper` (CSS/JS)
+- `Font Awesome` (`all.min.css`, `v4-shims.min.css`)
+- `Ace Editor` (`ace.min.js`, `ext-language_tools.js`)
+- `Google Fonts (Roboto)` + فونت‌های محلی
+- `dashicons` (CSS + fonts)
+- `eicons` (Elementor Icons)
 
-- گزینه `strict_asset_block` اضافه شده و به‌صورت پیش‌فرض فعال است.
-- وقتی فعال باشد، هر CSS/JS خارجی که معادل لوکال پیدا نکند، با فایل fallback داخلی جایگزین می‌شود:
-- `assets/js/blocked-asset.js`
-- `assets/css/blocked-asset.css`
+### 3) Strict External Asset Blocking
 
-## مدیریت Mixpanel
+- گزینه `strict_asset_block` به‌صورت پیش‌فرض فعال است.
+- هر CSS/JS خارجی بدون نگاشت لوکال، با fallback داخلی جایگزین می‌شود:
+	- `assets/js/blocked-asset.js`
+	- `assets/css/blocked-asset.css`
 
-- مسدودسازی درخواست‌های Mixpanel از جمله:
+### 4) Mixpanel Isolation
+
+مسدودسازی endpointهای رایج Mixpanel:
+
 - `api-eu.mixpanel.com`
 - `api.mixpanel.com`
 - `cdn.mxpnl.com`
 - `api-js.mixpanel.com`
-- جایگزینی اسکریپت Mixpanel با فایل داخلی امن:
+
+و rewrite اسکریپت به نسخه امن داخلی:
+
 - `assets/js/mixpanel-stub.js`
 
-## مسیر فایل‌های محلی
+---
+
+## نصب سریع
+
+1. پوشه پلاگین را در `wp-content/plugins/ghateino` قرار دهید.
+2. افزونه را از پنل WordPress فعال کنید.
+3. مسیر `Settings -> قطعینو` را باز کنید.
+4. تنظیمات را ذخیره کنید.
+
+---
+
+## تنظیمات مهم
+
+- `حالت کاری فایروال`: رفتار کلی فیلتر شبکه
+- `لیست سفید / لیست سیاه`: هر دامنه در یک خط
+- `جایگزینی CDN با فایل محلی`: فعال برای local-first
+- `مسدودسازی Mixpanel`: جلوگیری از ارسال telemetry
+- `بلاک سخت‌گیرانه Asset خارجی`: جلوگیری فوری از لود external asset بدون نسخه local
+- `ثبت لاگ درخواست‌ها`: فقط هنگام debugging
+- `نگهداری لاگ`: `1`, `3`, `7`, `15`, `30` روز
+
+---
+
+## برای توسعه‌دهنده‌ها
+
+### فیلترها و هوک‌های کلیدی WordPress
+
+- `pre_http_request`
+- `script_loader_src`
+- `style_loader_src`
+
+### فیلتر توسعه‌پذیری Ghateino
+
+- `ghateino_local_script_rewrite`
+
+نمونه استفاده:
+
+```php
+add_filter('ghateino_local_script_rewrite', function ($map) {
+		$map['https://cdn.example.com/js/app.min.js'] =
+				plugin_dir_url(__FILE__) . 'assets/vendor/custom/app.min.js';
+		return $map;
+});
+```
+
+### ساختار فایل‌های لوکال
 
 - `assets/vendor/wp-core-js/`
 - `assets/vendor/swiper/`
@@ -72,42 +133,22 @@
 - `assets/css/blocked-asset.css`
 - `assets/js/mixpanel-stub.js`
 
-## نصب
+---
 
-1. پوشه افزونه را در مسیر `wp-content/plugins/ghateino` قرار دهید.
-2. از پنل وردپرس افزونه را فعال کنید.
-3. به مسیر زیر بروید:
-- `Settings -> قطعینو`
-4. تنظیمات مورد نظر را ذخیره کنید.
+## نکات سازگاری
 
-## تنظیمات مهم
+- اگر سرویسی باید حتما external بماند:
+	- `strict_asset_block` را خاموش کنید
+	- یا نگاشت local برای آن سرویس اضافه کنید
+- برای عیب‌یابی ابتدا `request logging` را موقت فعال کنید، سپس بعد از تثبیت تنظیمات خاموشش کنید.
 
-- `حالت کاری فایروال`: تعیین رفتار کلی مسدودسازی
-- `لیست سفید / لیست سیاه`: هر دامنه در یک خط
-- `جایگزینی CDN با فایل محلی`: فعال برای لوکال‌سازی خودکار
-- `مسدودسازی Mixpanel`: فعال برای جلوگیری از ارتباط با Mixpanel
-- `بلاک سختگیرانه Asset خارجی`: جلوگیری فوری از لود هر asset خارجی بدون نسخه لوکال
-- `ثبت لاگ درخواست‌ها`: فقط در زمان عیب‌یابی فعال شود
-- `نگهداری لاگ‌ها`: 1، 3، 7، 15، 30 روز
-
-## نکات فنی
-
-- فیلترهای اصلی وردپرس مورد استفاده:
-- `pre_http_request`
-- `script_loader_src`
-- `style_loader_src`
-- نگاشت سفارشی قابل توسعه با فیلتر:
-- `ghateino_local_script_rewrite`
-
-## نکته سازگاری
-
-- این افزونه برای جلوگیری از وابستگی بیرونی طراحی شده است. اگر سرویسی باید حتما خارجی بماند، `strict_asset_block` را خاموش کنید یا نگاشت لوکال برای آن اضافه کنید.
+---
 
 ## نسخه
 
-- فعلی: `1.1.0`
+`1.1.0`
 
-## توسعه‌دهنده
+## تیم توسعه
 
 - Shokrino Team
 - https://shokrino.com
