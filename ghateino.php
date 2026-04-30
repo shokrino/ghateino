@@ -44,6 +44,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			add_action( 'admin_init', [ $this, 'register_settings' ] );
 			add_action( 'admin_init', [ $this, 'handle_clear_logs' ] );
 			add_action( 'wp_dashboard_setup', [ $this, 'register_dashboard_widget' ] );
+			add_action( 'wp_enqueue_scripts', [ $this, 'maybe_enqueue_vazirmatn_front' ], 20 );
 			add_filter( 'script_loader_src', [ $this, 'maybe_replace_script_src' ], 20, 2 );
 			add_filter( 'style_loader_src', [ $this, 'maybe_replace_style_src' ], 20, 2 );
 
@@ -412,6 +413,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'local_asset_rewrite' => isset( $input['local_asset_rewrite'] ) ? 'yes' : 'no',
 				'block_mixpanel'      => isset( $input['block_mixpanel'] ) ? 'yes' : 'no',
 				'strict_asset_block'  => isset( $input['strict_asset_block'] ) ? 'yes' : 'no',
+				'enable_front_vazirmatn' => isset( $input['enable_front_vazirmatn'] ) ? 'yes' : 'no',
 				'enable_timeout_guard'=> isset( $input['enable_timeout_guard'] ) ? 'yes' : 'no',
 				'max_request_timeout' => $max_request_timeout,
 			];
@@ -850,6 +852,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'local_asset_rewrite'=> 'yes',
 				'block_mixpanel'     => 'yes',
 				'strict_asset_block' => 'yes',
+				'enable_front_vazirmatn' => 'no',
 				'enable_timeout_guard'=> 'no',
 				'max_request_timeout'=> '3',
 			];
@@ -962,6 +965,29 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			return $src;
 		}
 
+		public function maybe_enqueue_vazirmatn_front() {
+			if ( is_admin() ) {
+				return;
+			}
+
+			$settings = $this->get_settings();
+			if ( 'yes' !== ( $settings['enable_front_vazirmatn'] ?? 'no' ) ) {
+				return;
+			}
+
+			$vazirmatn_css_path = plugin_dir_path( __FILE__ ) . 'assets/vendor/google-fonts/vazirmatn.css';
+			if ( ! file_exists( $vazirmatn_css_path ) ) {
+				return;
+			}
+
+			wp_enqueue_style(
+				'ghateino-vazirmatn',
+				plugin_dir_url( __FILE__ ) . 'assets/vendor/google-fonts/vazirmatn.css',
+				[],
+				'1.0.0'
+			);
+		}
+
 		private function map_style_path_to_local( $path, $original_src, $host ) {
 			$fontawesome_base_url = plugin_dir_url( __FILE__ ) . 'assets/vendor/fontawesome/css/';
 			$fontawesome_base_dir = plugin_dir_path( __FILE__ ) . 'assets/vendor/fontawesome/css/';
@@ -976,11 +1002,23 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				return $fontawesome_base_url . 'v4-shims.min.css';
 			}
 
-			if ( 'fonts.googleapis.com' === $host && strpos( $path, '/css2' ) !== false ) {
-				$roboto_css = plugin_dir_path( __FILE__ ) . 'assets/vendor/google-fonts/roboto.css';
-				if ( file_exists( $roboto_css ) ) {
-					$this->log_request( $original_src, $host, 'google_fonts_rewritten_to_local' );
-					return plugin_dir_url( __FILE__ ) . 'assets/vendor/google-fonts/roboto.css';
+			if ( 'fonts.googleapis.com' === $host && 0 === strpos( $path, '/css' ) ) {
+				$families = $this->extract_google_font_families( $original_src );
+
+				if ( in_array( 'vazirmatn', $families, true ) ) {
+					$vazirmatn_css = plugin_dir_path( __FILE__ ) . 'assets/vendor/google-fonts/vazirmatn.css';
+					if ( file_exists( $vazirmatn_css ) ) {
+						$this->log_request( $original_src, $host, 'google_fonts_vazirmatn_rewritten_to_local' );
+						return plugin_dir_url( __FILE__ ) . 'assets/vendor/google-fonts/vazirmatn.css';
+					}
+				}
+
+				if ( in_array( 'roboto', $families, true ) || empty( $families ) ) {
+					$roboto_css = plugin_dir_path( __FILE__ ) . 'assets/vendor/google-fonts/roboto.css';
+					if ( file_exists( $roboto_css ) ) {
+						$this->log_request( $original_src, $host, 'google_fonts_rewritten_to_local' );
+						return plugin_dir_url( __FILE__ ) . 'assets/vendor/google-fonts/roboto.css';
+					}
 				}
 			}
 
@@ -1001,6 +1039,47 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			return '';
+		}
+
+		private function extract_google_font_families( $src ) {
+			$query = (string) wp_parse_url( $src, PHP_URL_QUERY );
+			if ( '' === $query ) {
+				return [];
+			}
+
+			$families = [];
+			$pairs    = explode( '&', $query );
+
+			foreach ( $pairs as $pair ) {
+				$pair = trim( (string) $pair );
+				if ( '' === $pair ) {
+					continue;
+				}
+
+				$key_value = explode( '=', $pair, 2 );
+				$key       = isset( $key_value[0] ) ? urldecode( (string) $key_value[0] ) : '';
+				$value     = isset( $key_value[1] ) ? urldecode( (string) $key_value[1] ) : '';
+
+				if ( 'family' !== strtolower( $key ) || '' === $value ) {
+					continue;
+				}
+
+				$family_parts = explode( '|', $value );
+				foreach ( $family_parts as $family_part ) {
+					$family_part = trim( (string) $family_part );
+					if ( '' === $family_part ) {
+						continue;
+					}
+
+					$family_name = explode( ':', $family_part, 2 )[0];
+					$family_name = strtolower( trim( str_replace( '+', ' ', $family_name ) ) );
+					if ( '' !== $family_name ) {
+						$families[] = $family_name;
+					}
+				}
+			}
+
+			return array_values( array_unique( $families ) );
 		}
 
 		private function should_block_external_assets( $host, $settings ) {
@@ -1175,6 +1254,86 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 		private function ensure_google_fonts_assets() {
 			$plugin_base = plugin_dir_path( __FILE__ );
 			$this->ensure_dir( $plugin_base . 'assets/vendor/google-fonts/' );
+			$this->ensure_dir( $plugin_base . 'assets/vendor/google-fonts/fonts/' );
+			$this->ensure_vazirmatn_assets();
+		}
+
+		private function ensure_vazirmatn_assets() {
+			$plugin_base      = plugin_dir_path( __FILE__ );
+			$target_base_dir  = $plugin_base . 'assets/vendor/google-fonts/fonts/vazirmatn/';
+			$target_css       = $plugin_base . 'assets/vendor/google-fonts/vazirmatn.css';
+			$font_file_weights = [
+				'Vazirmatn-Regular.woff2' => '400',
+				'Vazirmatn-Medium.woff2'  => '500',
+				'Vazirmatn-Bold.woff2'    => '700',
+			];
+
+			$this->ensure_dir( $target_base_dir );
+
+			foreach ( $font_file_weights as $font_file => $weight ) {
+				$target_file = $target_base_dir . $font_file;
+				if ( file_exists( $target_file ) ) {
+					continue;
+				}
+
+				$source_file = $this->find_vazirmatn_source_font( $font_file );
+				if ( '' !== $source_file ) {
+					@copy( $source_file, $target_file );
+				}
+			}
+
+			$css_lines = [ "/* Ghateino local Vazirmatn */" ];
+			$added_face = false;
+
+			foreach ( $font_file_weights as $font_file => $weight ) {
+				$target_file = $target_base_dir . $font_file;
+				if ( ! file_exists( $target_file ) ) {
+					continue;
+				}
+
+				$added_face = true;
+				$css_lines[] = "@font-face{font-family:'Vazirmatn';font-style:normal;font-weight:" . $weight . ";font-display:swap;src:url('fonts/vazirmatn/" . $font_file . "') format('woff2');}";
+			}
+
+			if ( ! $added_face ) {
+				$css_lines[] = "@font-face{font-family:'Vazirmatn';font-style:normal;font-weight:400;font-display:swap;src:local('Vazirmatn');}";
+			}
+
+			$css_lines[] = ".ghateino-font-vazirmatn{font-family:'Vazirmatn',sans-serif;}";
+			$css_content = implode( "\n", $css_lines ) . "\n";
+			$current_css = file_exists( $target_css ) ? (string) file_get_contents( $target_css ) : '';
+
+			if ( $current_css !== $css_content ) {
+				file_put_contents( $target_css, $css_content );
+			}
+		}
+
+		private function find_vazirmatn_source_font( $font_file ) {
+			$font_file = trim( (string) $font_file );
+			if ( '' === $font_file ) {
+				return '';
+			}
+
+			$glob_patterns = [
+				WP_CONTENT_DIR . '/plugins/*/assets/fonts/vazirmatn/' . $font_file,
+				WP_CONTENT_DIR . '/themes/*/assets/fonts/vazirmatn/' . $font_file,
+				WP_CONTENT_DIR . '/themes/*/fonts/vazirmatn/' . $font_file,
+			];
+
+			foreach ( $glob_patterns as $glob_pattern ) {
+				$matches = glob( $glob_pattern );
+				if ( ! is_array( $matches ) || empty( $matches ) ) {
+					continue;
+				}
+
+				foreach ( $matches as $match ) {
+					if ( is_file( $match ) ) {
+						return $match;
+					}
+				}
+			}
+
+			return '';
 		}
 
 		private function ensure_swiper_assets() {
@@ -1490,6 +1649,15 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 								<label>
 									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[local_asset_rewrite]" value="yes" <?php checked( $settings['local_asset_rewrite'], 'yes' ); ?> />
 									تلاش برای جایگزینی CDNهای رایج JS با نسخه محلی وردپرس (jQuery, React, Backbone, Underscore)
+								</label>
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row">لود فونت Vazirmatn در فرانت:</th>
+							<td>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_front_vazirmatn]" value="yes" <?php checked( $settings['enable_front_vazirmatn'], 'yes' ); ?> />
+									اگر فعال شود، فونت محلی Vazirmatn افزونه در فرانت‌اند enqueue می‌شود (پیش‌فرض خاموش)
 								</label>
 							</td>
 						</tr>

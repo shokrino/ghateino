@@ -48,7 +48,7 @@
 - `Swiper` (CSS/JS)
 - `Font Awesome` (`all.min.css`, `v4-shims.min.css`)
 - `Ace Editor` (`ace.min.js`, `ext-language_tools.js`)
-- `Google Fonts (Roboto)` + فونت‌های محلی
+- `Google Fonts (Roboto / Vazirmatn)` + فونت‌های محلی
 - `dashicons` (CSS + fonts)
 - `eicons` (Elementor Icons)
 
@@ -90,6 +90,7 @@
 - `جایگزینی CDN با فایل محلی`: فعال برای local-first
 - `مسدودسازی Mixpanel`: جلوگیری از ارسال telemetry
 - `بلاک سخت‌گیرانه Asset خارجی`: جلوگیری فوری از لود external asset بدون نسخه local
+- `لود فونت Vazirmatn در فرانت`: اختیاری و پیش‌فرض خاموش
 - `ثبت لاگ درخواست‌ها`: فقط هنگام debugging
 - `نگهداری لاگ`: `1`, `3`, `7`, `15`, `30` روز
 
@@ -125,6 +126,7 @@ add_filter('ghateino_local_script_rewrite', function ($map) {
 - `assets/vendor/fontawesome/webfonts/`
 - `assets/vendor/google-fonts/`
 - `assets/vendor/google-fonts/fonts/`
+- `assets/vendor/google-fonts/fonts/vazirmatn/`
 - `assets/vendor/dashicons/css/`
 - `assets/vendor/dashicons/fonts/`
 - `assets/vendor/eicons/css/`
