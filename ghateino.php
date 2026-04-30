@@ -895,6 +895,11 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				return $src;
 			}
 
+			if ( $this->is_blacklisted_asset_host( $host, $settings ) ) {
+				$this->log_request( $src, $host, 'blocked_by_blacklist_asset_script' );
+				return plugin_dir_url( __FILE__ ) . 'assets/js/blocked-asset.js';
+			}
+
 			if ( 'yes' === $settings['block_mixpanel'] && $this->is_mixpanel_host( $host ) ) {
 				$this->log_request( $src, $host, 'mixpanel_rewritten_to_local_stub' );
 				return plugin_dir_url( __FILE__ ) . 'assets/js/mixpanel-stub.js';
@@ -937,6 +942,11 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			if ( $this->is_same_site_host( $host ) ) {
 				$this->log_request( $src, $host, 'local_asset_bypassed_same_host_style' );
 				return $src;
+			}
+
+			if ( $this->is_blacklisted_asset_host( $host, $settings ) ) {
+				$this->log_request( $src, $host, 'blocked_by_blacklist_asset_style' );
+				return plugin_dir_url( __FILE__ ) . 'assets/css/blocked-asset.css';
 			}
 
 			$replacement = $this->map_style_path_to_local( $path, $src, $host );
@@ -1017,6 +1027,16 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			return $host !== $site_host;
+		}
+
+		private function is_blacklisted_asset_host( $host, $settings ) {
+			if ( ! is_array( $settings ) || ! isset( $settings['mode'] ) || 'blacklist' !== $settings['mode'] ) {
+				return false;
+			}
+
+			$blacklist = array_map( 'trim', explode( "\n", (string) ( $settings['blacklist'] ?? '' ) ) );
+
+			return $this->host_in_list( $host, $blacklist );
 		}
 
 		private function is_same_site_host( $host ) {
