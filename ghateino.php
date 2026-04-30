@@ -82,6 +82,11 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			if ( $mode === 'whitelist' ) {
+
+				if ( $this->is_local_host( $host ) ) {
+					return $preempt;
+				}
+
 				$whitelist = array_map( 'trim', explode( "\n", $settings['whitelist'] ) );
 				if ( ! $this->host_in_list( $host, $whitelist ) ) {
 					$this->log_request( $url, $host, 'blocked_by_whitelist_mode' );
