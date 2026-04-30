@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ghateino
  * Description: در شرایط قطعی اینترنت یا نیاز به قطع کردن درخواست ها به وبسایت های خاص بهترین گزینه شما افزونه قطعینو هست
- * Version: 1.1.1
+ * Version: 1.2.0
  * Plugin URI: https://shokrino.com
  * Author: Shokrino Team
  * Author URI: https://shokrino.com
@@ -1906,7 +1906,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 								<td>
 									<label>
 										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[allow_whitelisted_updates]" value="yes" <?php checked( $settings['allow_whitelisted_updates'], 'yes' ); ?> />
-										برای مثال با روشن گذاشتن این گزینه افزونه ها از مخزن که قطع هست بروزرسانی دریافت نمیکنند ولی از مارکت های ایرانی و مثلا افزونه های شکرینو که سرور داخل دارند بروزرسانی دریافت میشود
+										برای مثال با روشن گذاشتن این گزینه افزونه ها از مخزن که قطع هست بروزرسانی دریافت نمیکنند ولی از مارکت های ایرانی و مثلا افزونه های شکرینو که سرور داخل دارند بروزرسانی دریافت میکنند
 									</label>
 								</td>
 							</tr>
