@@ -148,6 +148,20 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			return $timeout;
 		}
 
+		private function normalize_log_limit( $raw_limit ) {
+			$limit = (int) $raw_limit;
+
+			if ( $limit < 50 ) {
+				return 50;
+			}
+
+			if ( $limit > 2000 ) {
+				return 2000;
+			}
+
+			return $limit;
+		}
+
 		private function is_local_host( $host ) {
 			$host = strtolower( trim( (string) $host ) );
 			if ( '' === $host ) {
@@ -171,15 +185,57 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				return;
 			}
 
+			$mode = sanitize_key( (string) $mode );
+			if ( '' === $mode ) {
+				return;
+			}
+
+			if ( $this->is_asset_rewrite_log_mode( $mode ) && ( $settings['log_asset_events'] ?? 'no' ) !== 'yes' ) {
+				return;
+			}
+
+			$host = $this->normalize_host( sanitize_text_field( (string) $host ) );
+			$url  = $this->sanitize_log_url( $url );
+
 			$logs = get_option( self::LOG_KEY, [] );
+			if ( ! is_array( $logs ) ) {
+				$logs = [];
+			}
+
 			$current_time = current_time( 'timestamp' );
 			$retention_days = intval( $settings['log_retention_days'] ) ?: 7;
 			$retention_seconds = $retention_days * DAY_IN_SECONDS;
 
 			if ( ! empty( $logs ) ) {
 				$logs = array_filter( $logs, function( $log ) use ( $current_time, $retention_seconds ) {
-					return ( $current_time - strtotime( $log['time'] ) ) <= $retention_seconds;
+					if ( ! is_array( $log ) || empty( $log['time'] ) ) {
+						return false;
+					}
+
+					$log_time = strtotime( (string) $log['time'] );
+					if ( false === $log_time ) {
+						return false;
+					}
+
+					return ( $current_time - $log_time ) <= $retention_seconds;
 				});
+			}
+
+			$last_log = end( $logs );
+			if ( is_array( $last_log ) ) {
+				$last_time = isset( $last_log['time'] ) ? strtotime( (string) $last_log['time'] ) : false;
+				$is_recent_duplicate = (
+					isset( $last_log['host'], $last_log['url'], $last_log['mode'] ) &&
+					$last_log['host'] === $host &&
+					$last_log['url'] === $url &&
+					$last_log['mode'] === $mode &&
+					false !== $last_time &&
+					( $current_time - $last_time ) <= MINUTE_IN_SECONDS
+				);
+
+				if ( $is_recent_duplicate ) {
+					return;
+				}
 			}
 
 			$logs[] = [
@@ -189,13 +245,39 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'mode' => $mode
 			];
 
-			if ( count( $logs ) > 500 ) {
-				$logs = array_slice( $logs, -500 );
+			$max_entries = isset( $settings['log_max_entries'] ) ? $this->normalize_log_limit( $settings['log_max_entries'] ) : 300;
+			if ( count( $logs ) > $max_entries ) {
+				$logs = array_slice( $logs, -$max_entries );
 			}
 
 			$logs = array_values( $logs );
 
 			update_option( self::LOG_KEY, $logs );
+		}
+
+		private function sanitize_log_url( $url ) {
+			$url = trim( (string) $url );
+			if ( '' === $url ) {
+				return '';
+			}
+
+			$parts = wp_parse_url( $url );
+			if ( ! is_array( $parts ) ) {
+				return substr( sanitize_text_field( $url ), 0, 512 );
+			}
+
+			$scheme = isset( $parts['scheme'] ) ? strtolower( (string) $parts['scheme'] ) . '://' : '';
+			$host   = isset( $parts['host'] ) ? strtolower( (string) $parts['host'] ) : '';
+			$port   = isset( $parts['port'] ) ? ':' . (int) $parts['port'] : '';
+			$path   = isset( $parts['path'] ) ? (string) $parts['path'] : '';
+
+			$clean_url = $scheme . $host . $port . $path;
+
+			return substr( sanitize_text_field( $clean_url ), 0, 512 );
+		}
+
+		private function is_asset_rewrite_log_mode( $mode ) {
+			return false !== strpos( (string) $mode, 'rewritten_to_local' ) || false !== strpos( (string) $mode, 'local_asset_bypassed' );
 		}
 
 		public function handle_clear_logs() {
@@ -311,6 +393,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			if ( ! in_array( $retention_days, [ '1', '3', '7', '15', '30' ], true ) ) {
 				$retention_days = '7';
 			}
+			$log_max_entries = isset( $input['log_max_entries'] ) ? (string) $this->normalize_log_limit( $input['log_max_entries'] ) : '300';
 
 			$max_request_timeout = isset( $input['max_request_timeout'] ) ? (string) $this->normalize_timeout_limit( $input['max_request_timeout'] ) : '3';
 
@@ -324,6 +407,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'gravatar_url'        => $gravatar_url,
 				'enable_logging'      => isset( $input['enable_logging'] ) ? 'yes' : 'no',
 				'log_retention_days'  => $retention_days,
+				'log_max_entries'     => $log_max_entries,
+				'log_asset_events'    => isset( $input['log_asset_events'] ) ? 'yes' : 'no',
 				'local_asset_rewrite' => isset( $input['local_asset_rewrite'] ) ? 'yes' : 'no',
 				'block_mixpanel'      => isset( $input['block_mixpanel'] ) ? 'yes' : 'no',
 				'strict_asset_block'  => isset( $input['strict_asset_block'] ) ? 'yes' : 'no',
@@ -760,6 +845,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'gravatar_url'       => plugin_dir_url(__FILE__) . 'user.jpg',
 				'enable_logging'     => 'no',
 				'log_retention_days' => '7',
+				'log_max_entries'    => '300',
+				'log_asset_events'   => 'no',
 				'local_asset_rewrite'=> 'yes',
 				'block_mixpanel'     => 'yes',
 				'strict_asset_block' => 'yes',
@@ -786,6 +873,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$host = strtolower( $host );
 
 			if ( $this->is_same_site_host( $host ) ) {
+				$this->log_request( $src, $host, 'local_asset_bypassed_same_host_script' );
 				return $src;
 			}
 
@@ -825,6 +913,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			$path = strtolower( $path );
 
 			if ( $this->is_same_site_host( $host ) ) {
+				$this->log_request( $src, $host, 'local_asset_bypassed_same_host_style' );
 				return $src;
 			}
 
@@ -1428,6 +1517,22 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 									<option value="30" <?php selected( $settings['log_retention_days'], '30' ); ?>>۳۰ روز</option>
 								</select>
 								<p class="description">لاگ‌های قدیمی‌تر از این زمان به‌صورت خودکار حذف می‌شوند.</p>
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row">حداکثر تعداد لاگ:</th>
+							<td>
+								<input type="number" min="50" max="2000" step="10" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_max_entries]" value="<?php echo esc_attr( $settings['log_max_entries'] ); ?>" style="width:120px;" />
+								<p class="description">برای سبک ماندن دیتابیس، فقط آخرین تعداد لاگ نگهداری می‌شود.</p>
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row">لاگ رویدادهای Asset:</th>
+							<td>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_asset_events]" value="yes" <?php checked( $settings['log_asset_events'], 'yes' ); ?> />
+									ثبت رویدادهای rewrite/bypass برای CSS و JS (پیش‌فرض خاموش برای کاهش فشار)
+								</label>
 							</td>
 						</tr>
 					</table>
