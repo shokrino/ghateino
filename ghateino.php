@@ -857,9 +857,27 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			return wp_parse_args( $saved, $defaults );
 		}
 
+		private function is_customizer_context() {
+			global $pagenow;
+
+			if ( function_exists( 'is_customize_preview' ) && is_customize_preview() ) {
+				return true;
+			}
+
+			if ( is_admin() && 'customize.php' === $pagenow ) {
+				return true;
+			}
+
+			return isset( $_REQUEST['customize_changeset_uuid'] ) || isset( $_REQUEST['customize_theme'] ) || isset( $_REQUEST['customize_messenger_channel'] );
+		}
+
 		public function maybe_replace_script_src( $src, $handle ) {
 			$settings = $this->get_settings();
 			if ( 'yes' !== $settings['local_asset_rewrite'] ) {
+				return $src;
+			}
+
+			if ( $this->is_customizer_context() ) {
 				return $src;
 			}
 
@@ -899,6 +917,10 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 		public function maybe_replace_style_src( $src, $handle ) {
 			$settings = $this->get_settings();
 			if ( 'yes' !== $settings['local_asset_rewrite'] ) {
+				return $src;
+			}
+
+			if ( $this->is_customizer_context() ) {
 				return $src;
 			}
 
