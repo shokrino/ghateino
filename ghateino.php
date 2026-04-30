@@ -1893,7 +1893,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 								</td>
 							</tr>
 							<tr valign="top">
-								<th scope="row">بروزرسانی‌های خودکار:</th>
+								<th scope="row">جلوگیری از بروزرسانی‌های خودکار:</th>
 								<td>
 									<label>
 										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_updates]" value="yes" <?php checked( $settings['disable_updates'], 'yes' ); ?> />
@@ -1902,11 +1902,11 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 								</td>
 							</tr>
 							<tr valign="top">
-								<th scope="row">استثنا برای سرورهای وایت‌لیست:</th>
+								<th scope="row">استثنا بروزرسانی برای لیست سفید بالا و سرور های داخلی:</th>
 								<td>
 									<label>
 										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[allow_whitelisted_updates]" value="yes" <?php checked( $settings['allow_whitelisted_updates'], 'yes' ); ?> />
-										اگر «بروزرسانی‌های خودکار» فعال باشد، فقط آپدیت افزونه/قالب از دامنه‌های موجود در لیست سفید مجاز بماند (پیش‌فرض: روشن)
+										برای مثال با روشن گذاشتن این گزینه افزونه ها از مخزن که قطع هست بروزرسانی دریافت نمیکنند ولی از مارکت های ایرانی و مثلا افزونه های شکرینو که سرور داخل دارند بروزرسانی دریافت میشود
 									</label>
 								</td>
 							</tr>
@@ -1915,7 +1915,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 								<td>
 									<label>
 										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_gravatar]" value="yes" <?php checked( $settings['disable_gravatar'], 'yes' ); ?> />
-										مسدودسازی گراواتار و جایگزینی با عکس محلی
+										مسدودسازی گراواتار و جایگزینی با عکس لوکال
 									</label>
 								</td>
 							</tr>
