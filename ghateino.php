@@ -537,6 +537,8 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'azkivam.com',
 				'api.azkivam.com',
 				'torob.com',
+				'torob.ir',
+				'api.torob.ir',
 				'api.torob.com',
 				'torobpay.com',
 				'api.torobpay.com',
@@ -783,6 +785,10 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			$host = strtolower( $host );
 
+			if ( $this->is_same_site_host( $host ) ) {
+				return $src;
+			}
+
 			if ( 'yes' === $settings['block_mixpanel'] && $this->is_mixpanel_host( $host ) ) {
 				$this->log_request( $src, $host, 'mixpanel_rewritten_to_local_stub' );
 				return plugin_dir_url( __FILE__ ) . 'assets/js/mixpanel-stub.js';
@@ -817,6 +823,10 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			$host = strtolower( $host );
 			$path = strtolower( $path );
+
+			if ( $this->is_same_site_host( $host ) ) {
+				return $src;
+			}
 
 			$replacement = $this->map_style_path_to_local( $path, $src, $host );
 			if ( $replacement ) {
@@ -896,6 +906,24 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			return $host !== $site_host;
+		}
+
+		private function is_same_site_host( $host ) {
+			$site_host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+			if ( '' === $site_host || '' === $host ) {
+				return false;
+			}
+
+			return $this->normalize_host( $site_host ) === $this->normalize_host( $host );
+		}
+
+		private function normalize_host( $host ) {
+			$host = strtolower( trim( (string) $host ) );
+			if ( 0 === strpos( $host, 'www.' ) ) {
+				$host = substr( $host, 4 );
+			}
+
+			return $host;
 		}
 
 		private function is_known_cdn_host( $host ) {
