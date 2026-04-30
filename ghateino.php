@@ -337,8 +337,17 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 		public function render_dashboard_widget() {
 			$settings_url = admin_url( 'options-general.php?page=ghateino' );
 
-			echo '<div class="ghateino-widget-content">';
-			echo '<p><strong>همه درخواست ها رو مدیریت کنید تا در شرایط قطع بودن دسترسی سرور شما به اینترنت جهانی بتوانید بدون کاهش سرعت از سایت وردپرس خودتون استفاده کنید</strong></p>';
+			echo '<div class="ghateino-widget-content" style="border:1px solid #d6deeb; border-radius:16px; padding:14px;">';
+			echo '<div style="display:flex; align-items:center; gap:12px; margin-bottom:10px; background:#051b41; border-radius:12px; padding:10px 12px;">';
+			echo '<div style="width:40px; height:40px; border-radius:10px; background:rgba(252, 203, 4, 0.16); display:flex; align-items:center; justify-content:center;">';
+			echo '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 18l.01 0" /><path d="M9.172 15.172a4 4 0 0 1 5.656 0" /><path d="M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2" /><path d="M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374" /><path d="M3 3l18 18" /></svg>';
+			echo '</div>';
+			echo '<div>';
+			echo '<strong style="display:block; color:#ffffff;">قطعینو</strong>';
+			echo '<small style="color:#fccb04;">مدیریت درخواست های خارجی وردپرس</small>';
+			echo '</div>';
+			echo '</div>';
+			echo '<p><strong>همه درخواست ها رو مدیریت کنید تا در شرایط قطع بودن دسترسی سرور شما به اینترنت جهانی بتوانید بدون کاهش سرعت از سایت وردپرس خودتون استفاده کنید.</strong></p>';
 			echo '<p><strong>برای دریافت تغییرات و اطلاعات مهم حتما سایت و کانال پیامرسان داخلی را داشته باشید</strong></p>';
 			echo '<ul>';
 			echo '<li><a href="https://shokrino.com" target="_blank" rel="noopener noreferrer">سایت شکرینو</a></li>';
@@ -1517,52 +1526,193 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			?>
 			<div class="wrap">
-				<h1>تنظیمات افزونه قطعینو</h1>
+				<h1>افزایش سرعت سایت در نت ملی</h1>
 				<style>
+					.ghateino-admin {
+						max-width: 1160px;
+					}
+
 					.ghateino-card {
 						background: #ffffff;
-						border-radius: 14px;
-						padding: 18px 20px;
-						box-shadow: 0 6px 20px rgba(16, 24, 40, 0.06);
+						border: 1px solid #d6deeb;
+						border-radius: 18px;
+						padding: 20px 22px;
+						box-shadow: 0 8px 24px rgba(5, 27, 65, 0.08);
 						margin-bottom: 18px;
-						max-width: 980px;
+					}
+
+					.ghateino-hero {
+						background: linear-gradient(135deg, #051b41 0%, #0d2f67 100%);
+						color: #ffffff;
+						display: flex;
+						align-items: center;
+						gap: 16px;
+					}
+
+					.ghateino-hero h1 {
+						color: #ffffff;
+						margin: 0 0 6px;
+						font-size: 26px;
+						line-height: 1.3;
+					}
+
+					.ghateino-hero h2 {
+						color: #fccb04;
+						margin: 0 0 6px;
+						font-size: 16px;
+						font-weight: 600;
+					}
+
+					.ghateino-hero p {
+						margin: 0;
+						color: rgba(255, 255, 255, 0.9);
+					}
+
+					.ghateino-logo {
+						width: 70px;
+						height: 70px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						flex-shrink: 0;
 					}
 
 					.ghateino-guide {
-						background: #0096ff;
-						color: #fff;
+						background: #051b41;
+						color: #ffffff;
+					}
+
+					.ghateino-guide strong {
+						color: #fccb04;
+					}
+
+					.ghateino-links {
+						display: flex;
+						flex-wrap: wrap;
+						gap: 10px;
+						align-items: center;
 					}
 
 					.ghateino-form-table th {
 						width: 260px;
 					}
 
+					.ghateino-form-table td {
+						padding: 12px 10px;
+					}
+
 					.ghateino-settings-form input[type="text"],
 					.ghateino-settings-form input[type="number"],
 					.ghateino-settings-form textarea,
 					.ghateino-settings-form select {
-						border-radius: 10px;
+						border-radius: 12px;
 						border-color: #cfd6de;
+						padding: 8px 10px;
+					}
+
+					.ghateino-settings-form textarea {
+						min-height: 122px;
+					}
+
+					.ghateino-settings-form .button {
+						border-radius: 12px;
 					}
 
 					.ghateino-section-title {
 						font-size: 16px;
-						padding-bottom: 10px;
+						padding: 10px 14px;
 						margin: 0 0 10px;
-						border-bottom: 1px solid #e7ecf2;
+						border-radius: 12px;
+						background: #051b41;
+						color: #ffffff;
+					}
+
+					.ghateino-section-title small {
+						display: block;
+						margin-top: 4px;
+						color: #fccb04;
+						font-size: 13px;
+						font-weight: 500;
+					}
+
+					.ghateino-section-block {
+						border: 1px solid #e4eaf4;
+						border-radius: 16px;
+						padding: 12px;
+						margin-bottom: 14px;
+					}
+
+					.ghateino-quick-actions {
+						display: flex;
+						flex-wrap: wrap;
+						gap: 8px;
+					}
+
+					.ghateino-log-details summary {
+						font-size: 1.15em;
+						font-weight: bold;
+						cursor: pointer;
+						display: flex;
+						align-items: center;
+						justify-content: space-between;
+						color: #051b41;
+					}
+
+					.ghateino-log-toolbar {
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						gap: 12px;
+						margin-bottom: 14px;
+						flex-wrap: wrap;
+					}
+
+					.ghateino-log-table {
+						border-radius: 14px;
+						overflow: hidden;
+						border: 1px solid #d6deeb;
 					}
 				</style>
 
-				<div class="ghateino-card ghateino-guide" style="margin-top:14px;">
-					<p style="margin:0 0 8px;"><strong>راهنمای سریع کار با افزونه:</strong></p>
+				<div class="ghateino-card ghateino-hero">
+					<div class="ghateino-logo" aria-hidden="true">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="100"
+							height="100"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="#ffffff"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+							<path d="M12 18l.01 0" />
+							<path d="M9.172 15.172a4 4 0 0 1 5.656 0" />
+							<path d="M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2" />
+							<path d="M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374" />
+							<path d="M3 3l18 18" />
+						</svg>
+					</div>
+					<div>
+						<h1>تنظیمات افزونه قطعینو</h1>
+						<h2>مدیریت سریع و منظم درخواست های خارجی در وردپرس</h2>
+						<p>همه بخش های افزونه دسته بندی شده تا مسیر پیکربندی ساده تر، سریع تر و قابل پیش بینی تر باشد.</p>
+					</div>
+				</div>
+
+				<div class="ghateino-card ghateino-guide">
+					<p style="margin:0 0 8px;"><strong>راهنمای شروع سریع</strong></p>
 					<p style="margin:0 0 6px;">1) اگر می خواهید با خیال راحت شروع کنید، حالت «غیرفعال» مناسب است و سایت بدون محدودیت روی هیچ دامنه ای کار می کند.</p>
 					<p style="margin:0 0 6px;">2) اگر اینترنت بین الملل ناپایدار است، حالت «لیست سفید» کمک می کند فقط سرویس های ضروری سایت شما فعال بمانند. آنهارا بسته به نیاز به لیست اضافه کنید.</p>
 					<p style="margin:0 0 6px;">3) برای بهتر شدن سرعت در زمان اختلال، «محدودسازی Timeout» را روشن کنید و مقدار 3 ثانیه را امتحان کنید.</p>
 					<p style="margin:0;">4) اگر سرویس خاصی مثل پرداخت یا پیامک دیر پاسخ می دهد، مقدار Timeout را کمی بیشتر کنید (مثلا 5 ثانیه).</p>
 				</div>
 
-				<div class="ghateino-card" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+				<div class="ghateino-card ghateino-links">
 					<a class="button button-secondary" href="https://ble.ir/shokrino" target="_blank" rel="noopener noreferrer">کانال پیامرسان بله توسعه دهنده</a>
+					<a class="button button-secondary" href="https://shokrino.com/ghateino" target="_blank" rel="noopener noreferrer">وبسایت شکرینو | صفحه قطعینو</a>
 					<span class="description">برای راهنماها و اطلاعیه های جدید در زمانی که صرفا پیامرسان های داخلی دردسترس هست کانال ما را دنبال کنید.</span>
 				</div>
 
@@ -1573,179 +1723,191 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				<form method="post" action="options.php" class="ghateino-card ghateino-settings-form">
 					<?php settings_fields( 'ghateino_group' ); ?>
 					
-					<h2 class="ghateino-section-title">تنظیمات اصلی فایروال</h2>
-					<table class="form-table ghateino-form-table">
-						<tr valign="top">
-							<th scope="row">حالت کاری فایروال:</th>
-							<td>
-								<select name="<?php echo esc_attr( self::OPTION_KEY ); ?>[mode]" style="width: 300px;">
-									<option value="disabled" <?php selected( $settings['mode'], 'disabled' ); ?>>غیرفعال (بدون محدودیت)</option>
-									<option value="whitelist" <?php selected( $settings['mode'], 'whitelist' ); ?>>مسدودسازی همه (فقط مجازها از لیست سفید)</option>
-									<option value="blacklist" <?php selected( $settings['mode'], 'blacklist' ); ?>>آزادسازی همه (فقط مسدودها از لیست سیاه)</option>
-								</select>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">لیست سفید (Whitelist):<br><small>هر دامنه در یک خط (مثال: api.shokrino.com)</small></th>
-							<td>
-								<textarea id="ghateino-whitelist-textarea" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[whitelist]" rows="5" style="width: 400px;"><?php echo esc_textarea( $settings['whitelist'] ); ?></textarea>
-								<div style="margin-top: 10px;">
-									<p class="description" style="margin-bottom: 8px;"><strong>افزودن سریع سایت های رایج به لیست سفید:</strong></p>
-									<div style="display: flex; flex-wrap: wrap; gap: 8px;">
-										<?php foreach ( $quick_presets as $preset ) : ?>
-											<button
-												type="button"
-												class="button button-secondary ghateino-quick-whitelist"
-												data-domains="<?php echo esc_attr( implode( ',', $preset['domains'] ) ); ?>"
-											>
-												<?php echo esc_html( $preset['label'] ); ?>
-											</button>
-										<?php endforeach; ?>
+					<div class="ghateino-section-block">
+						<h2 class="ghateino-section-title">۱) تنظیمات اصلی فایروال<small>درگاه کنترل دسترسی درخواست‌های خارجی</small></h2>
+						<table class="form-table ghateino-form-table">
+							<tr valign="top">
+								<th scope="row">حالت کاری فایروال:</th>
+								<td>
+									<select name="<?php echo esc_attr( self::OPTION_KEY ); ?>[mode]" style="width: 320px;">
+										<option value="disabled" <?php selected( $settings['mode'], 'disabled' ); ?>>غیرفعال (بدون محدودیت)</option>
+										<option value="whitelist" <?php selected( $settings['mode'], 'whitelist' ); ?>>مسدودسازی همه (فقط مجازها از لیست سفید)</option>
+										<option value="blacklist" <?php selected( $settings['mode'], 'blacklist' ); ?>>آزادسازی همه (فقط مسدودها از لیست سیاه)</option>
+									</select>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">لیست سفید (Whitelist):<br><small>هر دامنه در یک خط (مثال: api.shokrino.com)</small></th>
+								<td>
+									<textarea id="ghateino-whitelist-textarea" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[whitelist]" rows="5" style="width: 420px;"><?php echo esc_textarea( $settings['whitelist'] ); ?></textarea>
+									<div style="margin-top: 10px;">
+										<p class="description" style="margin-bottom: 8px;"><strong>افزودن سریع سایت های رایج به لیست سفید:</strong></p>
+										<div class="ghateino-quick-actions">
+											<?php foreach ( $quick_presets as $preset ) : ?>
+												<button
+													type="button"
+													class="button button-secondary ghateino-quick-whitelist"
+													data-domains="<?php echo esc_attr( implode( ',', $preset['domains'] ) ); ?>"
+												>
+													<?php echo esc_html( $preset['label'] ); ?>
+												</button>
+											<?php endforeach; ?>
+										</div>
+										<p class="description" style="margin-top: 8px;">با کلیک روی هر دکمه، دامنه های همان دسته به لیست سفید اضافه می شود (بدون ثبت تکراری).</p>
 									</div>
-									<p class="description" style="margin-top: 8px;">با کلیک روی هر دکمه، دامنه های همان دسته به لیست سفید اضافه می شود (بدون ثبت تکراری).</p>
-								</div>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">لیست سیاه (Blacklist):<br><small>هر دامنه در یک خط</small></th>
-							<td>
-								<textarea name="<?php echo esc_attr( self::OPTION_KEY ); ?>[blacklist]" rows="5" style="width: 400px;"><?php echo esc_textarea( $settings['blacklist'] ); ?></textarea>
-							</td>
-						</tr>
-					</table>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">لیست سیاه (Blacklist):<br><small>هر دامنه در یک خط</small></th>
+								<td>
+									<textarea name="<?php echo esc_attr( self::OPTION_KEY ); ?>[blacklist]" rows="5" style="width: 420px;"><?php echo esc_textarea( $settings['blacklist'] ); ?></textarea>
+								</td>
+							</tr>
+						</table>
+					</div>
 
-					<h2 class="ghateino-section-title" style="margin-top: 20px;">تنظیمات امکانات جانبی</h2>
-					<table class="form-table ghateino-form-table">
-						<tr valign="top">
-							<th scope="row">تلمتری وردپرس:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_telemetry]" value="yes" <?php checked( $settings['disable_telemetry'], 'yes' ); ?> />
-									جلوگیری از ارسال اطلاعات به سرورهای وردپرس (wordpress.org)
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">بروزرسانی‌های خودکار:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_updates]" value="yes" <?php checked( $settings['disable_updates'], 'yes' ); ?> />
-									غیرفعال کردن جستجو برای آپدیت هسته، قالب‌ها و افزونه‌ها
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">سرویس گراواتار:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_gravatar]" value="yes" <?php checked( $settings['disable_gravatar'], 'yes' ); ?> />
-									مسدودسازی گراواتار و جایگزینی با عکس محلی
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">جایگزینی CDN با فایل محلی:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[local_asset_rewrite]" value="yes" <?php checked( $settings['local_asset_rewrite'], 'yes' ); ?> />
-									تلاش برای جایگزینی CDNهای رایج JS با نسخه محلی وردپرس (jQuery, React, Backbone, Underscore)
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">لود فونت Vazirmatn در فرانت:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_front_vazirmatn]" value="yes" <?php checked( $settings['enable_front_vazirmatn'], 'yes' ); ?> />
-									اگر فعال شود، فونت محلی Vazirmatn افزونه در فرانت‌اند enqueue می‌شود (پیش‌فرض خاموش)
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">مسدودسازی Mixpanel:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[block_mixpanel]" value="yes" <?php checked( $settings['block_mixpanel'], 'yes' ); ?> />
-									مسدودسازی درخواست‌های Mixpanel (از جمله `api-eu.mixpanel.com`) و جایگزینی اسکریپت با نسخه خنثی محلی
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">بلاک سختگیرانه Asset خارجی:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[strict_asset_block]" value="yes" <?php checked( $settings['strict_asset_block'], 'yes' ); ?> />
-									اولویت مطلق با لوکال: اگر CSS/JS خارجی قابل جایگزینی نبود، سریع بلاک شود تا کندی ایجاد نشود
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">محدودسازی Timeout درخواست‌های خارجی:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_timeout_guard]" value="yes" <?php checked( $settings['enable_timeout_guard'], 'yes' ); ?> />
-									فعال‌سازی سقف زمان برای درخواست‌های HTTP خارجی
-								</label>
-								<p class="description" style="margin-top:6px;">اگر timeout درخواست بیشتر از مقدار زیر باشد، کاهش داده می‌شود تا درخواست‌های کند سریع‌تر fail شوند.</p>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">حداکثر Timeout (ثانیه):</th>
-							<td>
-								<input type="number" min="1" max="30" step="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[max_request_timeout]" value="<?php echo esc_attr( $settings['max_request_timeout'] ); ?>" style="width:100px;" />
-								<p class="description">پیشنهاد: ۳ ثانیه. پیش‌فرض افزونه روی ۳ است ولی این قابلیت برای حفظ سازگاری نسخه‌های قبلی به‌صورت پیش‌فرض غیرفعال است.</p>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">لینک جایگزین گراواتار:</th>
-							<td>
-								<input type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[gravatar_url]" value="<?php echo esc_url( $settings['gravatar_url'] ); ?>" style="width: 400px;" />
-								<p class="description">اگر گراواتار مسدود شود، این تصویر جایگزین پروفایل کاربران خواهد شد.</p>
-							</td>
-						</tr>
-					</table>
+					<div class="ghateino-section-block">
+						<h2 class="ghateino-section-title">۲) بهینه‌سازی Asset و فرانت‌اند<small>کنترل CDN، مسدودسازی هوشمند و جایگزینی محلی</small></h2>
+						<table class="form-table ghateino-form-table">
+							<tr valign="top">
+								<th scope="row">جایگزینی CDN با فایل محلی:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[local_asset_rewrite]" value="yes" <?php checked( $settings['local_asset_rewrite'], 'yes' ); ?> />
+										تلاش برای جایگزینی CDNهای رایج JS با نسخه محلی وردپرس (jQuery, React, Backbone, Underscore)
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">بلاک سختگیرانه Asset خارجی:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[strict_asset_block]" value="yes" <?php checked( $settings['strict_asset_block'], 'yes' ); ?> />
+										اولویت مطلق با لوکال: اگر CSS/JS خارجی قابل جایگزینی نبود، سریع بلاک شود تا کندی ایجاد نشود
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">مسدودسازی Mixpanel:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[block_mixpanel]" value="yes" <?php checked( $settings['block_mixpanel'], 'yes' ); ?> />
+										مسدودسازی درخواست‌های Mixpanel (از جمله `api-eu.mixpanel.com`) و جایگزینی اسکریپت با نسخه خنثی محلی
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">لود فونت Vazirmatn در فرانت:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_front_vazirmatn]" value="yes" <?php checked( $settings['enable_front_vazirmatn'], 'yes' ); ?> />
+										اگر فعال شود، فونت محلی Vazirmatn افزونه در فرانت‌اند enqueue می‌شود (پیش‌فرض خاموش)
+									</label>
+								</td>
+							</tr>
+						</table>
+					</div>
 
-					<h2 class="ghateino-section-title" style="margin-top: 20px;">تنظیمات لاگ (گزارش‌گیری)</h2>
-					<table class="form-table ghateino-form-table">
-						<tr valign="top">
-							<th scope="row">ثبت لاگ درخواست‌ها:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_logging]" value="yes" <?php checked( $settings['enable_logging'], 'yes' ); ?> />
-									فعال‌سازی ثبت درخواست‌های مسدود شده (فقط در زمان نیاز به عیب‌یابی فعال کنید)
-								</label>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">نگهداری لاگ‌ها:</th>
-							<td>
-								<select name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_retention_days]">
-									<option value="1" <?php selected( $settings['log_retention_days'], '1' ); ?>>۱ روز</option>
-									<option value="3" <?php selected( $settings['log_retention_days'], '3' ); ?>>۳ روز</option>
-									<option value="7" <?php selected( $settings['log_retention_days'], '7' ); ?>>۷ روز</option>
-									<option value="15" <?php selected( $settings['log_retention_days'], '15' ); ?>>۱۵ روز</option>
-									<option value="30" <?php selected( $settings['log_retention_days'], '30' ); ?>>۳۰ روز</option>
-								</select>
-								<p class="description">لاگ‌های قدیمی‌تر از این زمان به‌صورت خودکار حذف می‌شوند.</p>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">حداکثر تعداد لاگ:</th>
-							<td>
-								<input type="number" min="50" max="2000" step="10" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_max_entries]" value="<?php echo esc_attr( $settings['log_max_entries'] ); ?>" style="width:120px;" />
-								<p class="description">برای سبک ماندن دیتابیس، فقط آخرین تعداد لاگ نگهداری می‌شود.</p>
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row">لاگ رویدادهای Asset:</th>
-							<td>
-								<label>
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_asset_events]" value="yes" <?php checked( $settings['log_asset_events'], 'yes' ); ?> />
-									ثبت رویدادهای rewrite/bypass برای CSS و JS (پیش‌فرض خاموش برای کاهش فشار)
-								</label>
-							</td>
-						</tr>
-					</table>
+					<div class="ghateino-section-block">
+						<h2 class="ghateino-section-title">۳) پایداری، حریم خصوصی و زمان پاسخ<small>کاهش timeout و حذف تماس‌های غیرضروری</small></h2>
+						<table class="form-table ghateino-form-table">
+							<tr valign="top">
+								<th scope="row">محدودسازی Timeout درخواست‌های خارجی:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_timeout_guard]" value="yes" <?php checked( $settings['enable_timeout_guard'], 'yes' ); ?> />
+										فعال‌سازی سقف زمان برای درخواست‌های HTTP خارجی
+									</label>
+									<p class="description" style="margin-top:6px;">اگر timeout درخواست بیشتر از مقدار زیر باشد، کاهش داده می‌شود تا درخواست‌های کند سریع‌تر fail شوند.</p>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">حداکثر Timeout (ثانیه):</th>
+								<td>
+									<input type="number" min="1" max="30" step="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[max_request_timeout]" value="<?php echo esc_attr( $settings['max_request_timeout'] ); ?>" style="width:100px;" />
+									<p class="description">پیشنهاد: ۳ ثانیه. پیش‌فرض افزونه روی ۳ است ولی این قابلیت برای حفظ سازگاری نسخه‌های قبلی به‌صورت پیش‌فرض غیرفعال است.</p>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">تلمتری وردپرس:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_telemetry]" value="yes" <?php checked( $settings['disable_telemetry'], 'yes' ); ?> />
+										جلوگیری از ارسال اطلاعات به سرورهای وردپرس (wordpress.org)
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">بروزرسانی‌های خودکار:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_updates]" value="yes" <?php checked( $settings['disable_updates'], 'yes' ); ?> />
+										غیرفعال کردن جستجو برای آپدیت هسته، قالب‌ها و افزونه‌ها
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">سرویس گراواتار:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_gravatar]" value="yes" <?php checked( $settings['disable_gravatar'], 'yes' ); ?> />
+										مسدودسازی گراواتار و جایگزینی با عکس محلی
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">لینک جایگزین گراواتار:</th>
+								<td>
+									<input type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[gravatar_url]" value="<?php echo esc_url( $settings['gravatar_url'] ); ?>" style="width: 420px;" />
+									<p class="description">اگر گراواتار مسدود شود، این تصویر جایگزین پروفایل کاربران خواهد شد.</p>
+								</td>
+							</tr>
+						</table>
+					</div>
+
+					<div class="ghateino-section-block">
+						<h2 class="ghateino-section-title">۴) گزارش‌گیری و لاگ‌ها<small>کنترل حجم لاگ‌ها و ردیابی خطاها</small></h2>
+						<table class="form-table ghateino-form-table">
+							<tr valign="top">
+								<th scope="row">ثبت لاگ درخواست‌ها:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enable_logging]" value="yes" <?php checked( $settings['enable_logging'], 'yes' ); ?> />
+										فعال‌سازی ثبت درخواست‌های مسدود شده (فقط در زمان نیاز به عیب‌یابی فعال کنید)
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">نگهداری لاگ‌ها:</th>
+								<td>
+									<select name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_retention_days]">
+										<option value="1" <?php selected( $settings['log_retention_days'], '1' ); ?>>۱ روز</option>
+										<option value="3" <?php selected( $settings['log_retention_days'], '3' ); ?>>۳ روز</option>
+										<option value="7" <?php selected( $settings['log_retention_days'], '7' ); ?>>۷ روز</option>
+										<option value="15" <?php selected( $settings['log_retention_days'], '15' ); ?>>۱۵ روز</option>
+										<option value="30" <?php selected( $settings['log_retention_days'], '30' ); ?>>۳۰ روز</option>
+									</select>
+									<p class="description">لاگ‌های قدیمی‌تر از این زمان به‌صورت خودکار حذف می‌شوند.</p>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">حداکثر تعداد لاگ:</th>
+								<td>
+									<input type="number" min="50" max="2000" step="10" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_max_entries]" value="<?php echo esc_attr( $settings['log_max_entries'] ); ?>" style="width:120px;" />
+									<p class="description">برای سبک ماندن دیتابیس، فقط آخرین تعداد لاگ نگهداری می‌شود.</p>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">لاگ رویدادهای Asset:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[log_asset_events]" value="yes" <?php checked( $settings['log_asset_events'], 'yes' ); ?> />
+										ثبت رویدادهای rewrite/bypass برای CSS و JS (پیش‌فرض خاموش برای کاهش فشار)
+									</label>
+								</td>
+							</tr>
+						</table>
+					</div>
 					
 					<?php submit_button( 'ذخیره تمامی تنظیمات' ); ?>
 				</form>
@@ -1789,18 +1951,18 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 					});
 				</script>
 
-				<details class="ghateino-card">
-					<summary style="font-size: 1.2em; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+				<details class="ghateino-card ghateino-log-details">
+					<summary>
 						<span>مشاهده لاگ درخواست‌های مسدود شده (کلیک کنید)</span>
 					</summary>
 					
 					<div style="margin-top: 20px;">
-						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+						<div class="ghateino-log-toolbar">
 							<p class="description">لاگ‌ها به‌صورت خودکار محدود شده‌اند. برای جلوگیری از پر شدن دیتابیس می‌توانید آنها را پاک کنید.</p>
 							<a href="<?php echo esc_url( $clear_url ); ?>" class="button button-secondary" onclick="return confirm('آیا از پاک کردن لاگ‌ها مطمئن هستید؟');">پاک کردن لاگ‌ها</a>
 						</div>
 						
-						<table class="widefat striped">
+						<table class="widefat striped ghateino-log-table">
 							<thead>
 								<tr>
 									<th style="width: 15%;">زمان</th>
