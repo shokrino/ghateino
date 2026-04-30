@@ -57,17 +57,13 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			if ( $settings['disable_updates'] === 'yes' ) {
-				$this->disable_updates();
+				$this->disable_updates( $settings );
 			}
 		}
 		
 		public function filter_http_requests( $preempt, $parsed_args, $url ) {
 			$settings = $this->get_settings();
 			$mode     = $settings['mode'];
-
-			if ( $mode === 'disabled' ) {
-				return $preempt;
-			}
 
 			$host = (string) wp_parse_url( $url, PHP_URL_HOST );
 
@@ -76,6 +72,15 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 
 			$host = strtolower( $host );
+
+			if ( $this->should_block_non_whitelisted_update_request( $url, $host, $parsed_args, $settings ) ) {
+				$this->log_request( $url, $host, 'blocked_non_whitelisted_update_server' );
+				return new WP_Error( 'ghateino_blocked', 'Blocked by Ghateino Whitelisted Update Rule' );
+			}
+
+			if ( $mode === 'disabled' ) {
+				return $preempt;
+			}
 
 			if ( 'yes' === $settings['block_mixpanel'] && $this->is_mixpanel_host( $host ) ) {
 				$this->log_request( $url, $host, 'blocked_mixpanel' );
@@ -299,14 +304,58 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}, 20, 3 );
 		}
 
-		private function disable_updates() {
-			add_filter( 'pre_site_transient_update_core', '__return_null' );
-			add_filter( 'pre_site_transient_update_plugins', '__return_null' );
-			add_filter( 'pre_site_transient_update_themes', '__return_null' );
+		private function disable_updates( $settings ) {
+			$allow_whitelisted_updates = isset( $settings['allow_whitelisted_updates'] ) && 'yes' === $settings['allow_whitelisted_updates'];
 
+			add_filter( 'pre_site_transient_update_core', '__return_null' );
 			remove_action( 'admin_init', 'wp_version_check' );
-			remove_action( 'admin_init', 'wp_update_plugins' );
-			remove_action( 'admin_init', 'wp_update_themes' );
+
+			if ( ! $allow_whitelisted_updates ) {
+				add_filter( 'pre_site_transient_update_plugins', '__return_null' );
+				add_filter( 'pre_site_transient_update_themes', '__return_null' );
+				remove_action( 'admin_init', 'wp_update_plugins' );
+				remove_action( 'admin_init', 'wp_update_themes' );
+			}
+		}
+
+		private function should_block_non_whitelisted_update_request( $url, $host, $parsed_args, $settings ) {
+			if ( 'yes' !== ( $settings['disable_updates'] ?? 'no' ) ) {
+				return false;
+			}
+
+			if ( 'yes' !== ( $settings['allow_whitelisted_updates'] ?? 'yes' ) ) {
+				return false;
+			}
+
+			if ( ! $this->is_plugin_or_theme_update_request( $url, $parsed_args ) ) {
+				return false;
+			}
+
+			if ( $this->is_local_host( $host ) ) {
+				return false;
+			}
+
+			$whitelist = array_map( 'trim', explode( "\n", (string) ( $settings['whitelist'] ?? '' ) ) );
+
+			return ! $this->host_in_list( $host, $whitelist );
+		}
+
+		private function is_plugin_or_theme_update_request( $url, $parsed_args ) {
+			if ( ! is_array( $parsed_args ) ) {
+				return false;
+			}
+
+			$body = isset( $parsed_args['body'] ) && is_array( $parsed_args['body'] ) ? $parsed_args['body'] : [];
+			if ( isset( $body['plugins'] ) || isset( $body['themes'] ) ) {
+				return true;
+			}
+
+			$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+			if ( '' === $path ) {
+				return false;
+			}
+
+			return false !== strpos( $path, '/plugins/update-check/' ) || false !== strpos( $path, '/themes/update-check/' );
 		}
 
 		public function disable_gravatar( $avatar, $id_or_email, $size, $default, $alt ) {
@@ -413,6 +462,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'blacklist'           => $this->sanitize_host_list( $input['blacklist'] ?? '' ),
 				'disable_telemetry'   => isset( $input['disable_telemetry'] ) ? 'yes' : 'no',
 				'disable_updates'     => isset( $input['disable_updates'] ) ? 'yes' : 'no',
+				'allow_whitelisted_updates' => isset( $input['allow_whitelisted_updates'] ) ? 'yes' : 'no',
 				'disable_gravatar'    => isset( $input['disable_gravatar'] ) ? 'yes' : 'no',
 				'gravatar_url'        => $gravatar_url,
 				'enable_logging'      => isset( $input['enable_logging'] ) ? 'yes' : 'no',
@@ -856,6 +906,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 				'blacklist'          => '',
 				'disable_telemetry'  => 'yes',
 				'disable_updates'    => 'yes',
+				'allow_whitelisted_updates' => 'yes',
 				'disable_gravatar'   => 'yes',
 				'gravatar_url'       => plugin_dir_url(__FILE__) . 'user.jpg',
 				'enable_logging'     => 'no',
@@ -1847,6 +1898,15 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 									<label>
 										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_updates]" value="yes" <?php checked( $settings['disable_updates'], 'yes' ); ?> />
 										غیرفعال کردن جستجو برای آپدیت هسته، قالب‌ها و افزونه‌ها
+									</label>
+								</td>
+							</tr>
+							<tr valign="top">
+								<th scope="row">استثنا برای سرورهای وایت‌لیست:</th>
+								<td>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[allow_whitelisted_updates]" value="yes" <?php checked( $settings['allow_whitelisted_updates'], 'yes' ); ?> />
+										اگر «بروزرسانی‌های خودکار» فعال باشد، فقط آپدیت افزونه/قالب از دامنه‌های موجود در لیست سفید مجاز بماند (پیش‌فرض: روشن)
 									</label>
 								</td>
 							</tr>
