@@ -31,10 +31,12 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 		const OPTION_KEY = 'ghateino_http_control_settings';
 		const LOG_KEY    = 'ghateino_http_logs';
+		const PREPARED_ASSETS_VERSION_OPTION = 'ghateino_prepared_assets_version';
+		const PLUGIN_VERSION = '1.2.0';
 
 		public function __construct() {
 			$settings = $this->get_settings();
-			$this->prepare_local_assets();
+			$this->maybe_prepare_local_assets();
 
 			add_filter( 'pre_http_request', [ $this, 'filter_http_requests' ], 10, 3 );
 			add_filter( 'http_request_args', [ $this, 'enforce_request_timeout' ], 20, 2 );
@@ -59,6 +61,16 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			if ( $settings['disable_updates'] === 'yes' ) {
 				$this->disable_updates( $settings );
 			}
+		}
+
+		private function maybe_prepare_local_assets() {
+			$prepared_version = (string) get_option( self::PREPARED_ASSETS_VERSION_OPTION, '' );
+			if ( self::PLUGIN_VERSION === $prepared_version ) {
+				return;
+			}
+
+			$this->prepare_local_assets();
+			update_option( self::PREPARED_ASSETS_VERSION_OPTION, self::PLUGIN_VERSION );
 		}
 		
 		public function filter_http_requests( $preempt, $parsed_args, $url ) {
@@ -1417,8 +1429,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/v8/swiper.min.js',
 					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/swiper.min.js',
 					ABSPATH . 'wp-includes/js/dist/vendor/swiper/swiper-bundle.min.js',
-				],
-				'swiper*.min.js'
+				]
 			);
 
 			$source_css = $this->find_first_existing_file(
@@ -1426,8 +1437,7 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/v8/css/swiper.min.css',
 					WP_CONTENT_DIR . '/plugins/elementor/assets/lib/swiper/swiper.min.css',
 					ABSPATH . 'wp-includes/css/dist/vendor/swiper/swiper-bundle.min.css',
-				],
-				'swiper*.min.css'
+				]
 			);
 
 			if ( $source_js && ! file_exists( $target_js ) ) {
@@ -1439,28 +1449,10 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 			}
 		}
 
-		private function find_first_existing_file( $candidates, $file_pattern ) {
+		private function find_first_existing_file( $candidates ) {
 			foreach ( $candidates as $candidate ) {
 				if ( is_file( $candidate ) ) {
 					return $candidate;
-				}
-			}
-
-			if ( ! is_dir( WP_CONTENT_DIR ) ) {
-				return '';
-			}
-
-			$iterator = new RecursiveIteratorIterator(
-				new RecursiveDirectoryIterator( WP_CONTENT_DIR, FilesystemIterator::SKIP_DOTS )
-			);
-
-			foreach ( $iterator as $file_info ) {
-				if ( ! $file_info->isFile() ) {
-					continue;
-				}
-
-				if ( fnmatch( $file_pattern, $file_info->getFilename() ) ) {
-					return $file_info->getPathname();
 				}
 			}
 
