@@ -1,156 +1,166 @@
 # Ghateino (قطعینو)
 
-`Ghateino` یک افزونه WordPress با تمرکز روی پایداری شبکه است: کاهش وابستگی به CDN، کنترل خروجی HTTP، و جلوگیری از کندی ناشی از اتصال ناپایدار.
+`Ghateino` یک افزونه وردپرس برای مدیریت درخواست های خارجی و کاهش وابستگی به CDN در شرایط اینترنت ناپایدار است.
 
-رویکرد اصلی پروژه:
+رویکرد افزونه:
 
 `Local First + Block Fast`
 
-- اگر برای asset خارجی نسخه محلی داشته باشیم، فوری rewrite می‌شود.
-- اگر نسخه محلی نداشته باشیم و حالت سخت‌گیرانه فعال باشد، درخواست بلاک می‌شود.
+- اگر asset خارجی نگاشت محلی داشته باشد، سریع به نسخه محلی rewrite می شود.
+- اگر نگاشت محلی وجود نداشته باشد و حالت سخت گیرانه فعال باشد، درخواست خارجی سریع بلاک می شود.
 
----
+## مزیت اصلی
 
-## چرا Ghateino؟
+در شرایط اختلال اینترنت، Ghateino باعث می شود:
 
-در محیط‌هایی که دسترسی اینترنت متغیر یا محدود است، وابستگی مستقیم به CDN می‌تواند Time To Interactive را نابود کند. `Ghateino` به‌جای retryهای طولانی، مسیر deterministic می‌دهد:
+- زمان انتظار برای requestهای خارجی کمتر شود.
+- رفتار سایت قابل پیش بینی تر باشد.
+- وابستگی به CDNهای خارجی کاهش یابد.
+- مسیر عیب یابی از طریق لاگ ها ساده تر شود.
 
-- اولویت با فایل محلی
-- fallback امن داخلی
-- بلاک سریع درخواست‌های بدون نگاشت
+## قابلیت ها
 
-نتیجه: رفتار قابل پیش‌بینی‌تر فرانت‌اند، کاهش timeoutهای آزاردهنده، و تجربه کاربری پایدارتر.
+### 1) کنترل HTTP خروجی
 
----
-
-## Feature Highlights
-
-### 1) کنترل درخواست‌های HTTP خروجی
-
-سه حالت عملیاتی:
+سه حالت کاری:
 
 - `disabled`: بدون محدودیت
-- `whitelist`: فقط دامنه‌های مجاز
-- `blacklist`: مسدودسازی دامنه‌های مشخص
+- `whitelist`: فقط دامنه های مجاز
+- `blacklist`: مسدودسازی دامنه های مشخص
 
 امکانات تکمیلی:
 
-- غیرفعال‌سازی telemetry وردپرس (`wordpress.org`)
-- غیرفعال‌سازی بررسی آپدیت هسته/قالب/افزونه
-- غیرفعال‌سازی Gravatar + جایگزینی تصویر محلی
-- ثبت لاگ درخواست‌های مسدودشده با retention قابل تنظیم
+- محدودسازی timeout درخواست های خارجی
+- غیرفعال سازی telemetry وردپرس (`wordpress.org`)
+- غیرفعال سازی بررسی آپدیت هسته/قالب/افزونه
+- امکان استثنا برای آپدیت از دامنه های whitelist
+- جایگزینی Gravatar با تصویر محلی
+- لاگ گیری با retention و سقف تعداد رکورد
 
-### 2) Local Asset Rewriting
+### 2) بازنویسی assetهای خارجی به نسخه محلی
 
-جایگزینی خودکار CDN با فایل‌های local plugin:
+موارد پشتیبانی شده:
 
 - WP Core JS: `jquery`, `jquery-migrate`, `underscore`, `backbone`, `react`, `react-dom`
 - `Swiper` (CSS/JS)
-- `Font Awesome` (`all.min.css`, `v4-shims.min.css`)
 - `Ace Editor` (`ace.min.js`, `ext-language_tools.js`)
-- `Google Fonts (Roboto / Vazirmatn)` + فونت‌های محلی
+- `Font Awesome` (`all.min.css`, `v4-shims.min.css`)
+- `Google Fonts` (Roboto / Vazirmatn)
 - `dashicons` (CSS + fonts)
 - `eicons` (Elementor Icons)
 
-### 3) Strict External Asset Blocking
+### 3) بلاک سخت گیرانه asset خارجی
 
-- گزینه `strict_asset_block` به‌صورت پیش‌فرض فعال است.
-- هر CSS/JS خارجی بدون نگاشت لوکال، با fallback داخلی جایگزین می‌شود:
-	- `assets/js/blocked-asset.js`
-	- `assets/css/blocked-asset.css`
+اگر `strict_asset_block` فعال باشد، هر CSS/JS خارجی بدون نگاشت محلی با fallback داخلی جایگزین می شود:
 
-### 4) Mixpanel Isolation
+- `assets/js/blocked-asset.js`
+- `assets/css/blocked-asset.css`
 
-مسدودسازی endpointهای رایج Mixpanel:
+### 4) ایزوله سازی Mixpanel
+
+دامنه های رایج Mixpanel بلاک می شوند:
 
 - `api-eu.mixpanel.com`
 - `api.mixpanel.com`
 - `cdn.mxpnl.com`
 - `api-js.mixpanel.com`
 
-و rewrite اسکریپت به نسخه امن داخلی:
+و script با نسخه امن داخلی جایگزین می شود:
 
 - `assets/js/mixpanel-stub.js`
 
----
+### 5) بهینه سازی جدید عملکرد (نسخه فعلی)
 
-## نصب سریع
+- آماده سازی assetهای محلی فقط یک بار به ازای هر نسخه افزونه انجام می شود.
+- اسکن بازگشتی سنگین کل `wp-content` برای پیدا کردن فایل ها حذف شده است.
 
-1. پوشه پلاگین را در `wp-content/plugins/ghateino` قرار دهید.
-2. افزونه را از پنل WordPress فعال کنید.
+نتیجه: کاهش overhead در runtime و پایداری بهتر روی هاست های shared یا کند.
+
+## نصب
+
+1. پوشه افزونه را در `wp-content/plugins/ghateino` قرار دهید.
+2. افزونه را از پنل وردپرس فعال کنید.
 3. مسیر `Settings -> قطعینو` را باز کنید.
 4. تنظیمات را ذخیره کنید.
 
----
+## راهنمای تنظیمات پیشنهادی
 
-## تنظیمات مهم
+### سناریوی عمومی (ایمن)
 
-- `حالت کاری فایروال`: رفتار کلی فیلتر شبکه
-- `لیست سفید / لیست سیاه`: هر دامنه در یک خط
-- `جایگزینی CDN با فایل محلی`: فعال برای local-first
-- `مسدودسازی Mixpanel`: جلوگیری از ارسال telemetry
-- `بلاک سخت‌گیرانه Asset خارجی`: جلوگیری فوری از لود external asset بدون نسخه local
-- `لود فونت Vazirmatn در فرانت`: اختیاری و پیش‌فرض خاموش
-- `ثبت لاگ درخواست‌ها`: فقط هنگام debugging
-- `نگهداری لاگ`: `1`, `3`, `7`, `15`, `30` روز
+- `mode = disabled`
+- `local_asset_rewrite = yes`
+- `strict_asset_block = yes`
+- `enable_timeout_guard = yes`
+- `max_request_timeout = 3`
 
----
+### سناریوی اینترنت محدود
 
-## برای توسعه‌دهنده‌ها
+- `mode = whitelist`
+- دامنه های ضروری را در whitelist وارد کنید.
+- در صورت نیاز `allow_whitelisted_updates = yes` را فعال نگه دارید.
 
-### فیلترها و هوک‌های کلیدی WordPress
+### سناریوی عیب یابی
+
+- موقت `enable_logging = yes`
+- در صورت نیاز `log_asset_events = yes`
+- پس از تثبیت تنظیمات، لاگ گیری را محدود یا غیرفعال کنید.
+
+## توسعه دهنده ها
+
+### هوک های کلیدی وردپرس
 
 - `pre_http_request`
+- `http_request_args`
 - `script_loader_src`
 - `style_loader_src`
 
-### فیلتر توسعه‌پذیری Ghateino
+### فیلتر توسعه پذیری Ghateino
 
 - `ghateino_local_script_rewrite`
 
-نمونه استفاده:
+امضای فیلتر:
 
 ```php
-add_filter('ghateino_local_script_rewrite', function ($map) {
-		$map['https://cdn.example.com/js/app.min.js'] =
-				plugin_dir_url(__FILE__) . 'assets/vendor/custom/app.min.js';
-		return $map;
-});
+apply_filters( 'ghateino_local_script_rewrite', '', $path, $original_src );
 ```
 
-### ساختار فایل‌های لوکال
+نمونه صحیح:
 
-- `assets/vendor/wp-core-js/`
-- `assets/vendor/swiper/`
-- `assets/vendor/fontawesome/css/`
-- `assets/vendor/fontawesome/webfonts/`
-- `assets/vendor/google-fonts/`
-- `assets/vendor/google-fonts/fonts/`
-- `assets/vendor/google-fonts/fonts/vazirmatn/`
-- `assets/vendor/dashicons/css/`
-- `assets/vendor/dashicons/fonts/`
-- `assets/vendor/eicons/css/`
-- `assets/vendor/eicons/fonts/`
-- `assets/js/blocked-asset.js`
-- `assets/css/blocked-asset.css`
-- `assets/js/mixpanel-stub.js`
+```php
+add_filter('ghateino_local_script_rewrite', function ($replacement, $path, $original_src) {
+    if (strpos($path, '/custom-lib.min.js') !== false) {
+        return plugin_dir_url(__FILE__) . 'assets/vendor/custom/custom-lib.min.js';
+    }
 
----
+    return $replacement;
+}, 10, 3);
+```
 
 ## نکات سازگاری
 
-- اگر سرویسی باید حتما external بماند:
-	- `strict_asset_block` را خاموش کنید
-	- یا نگاشت local برای آن سرویس اضافه کنید
-- برای عیب‌یابی ابتدا `request logging` را موقت فعال کنید، سپس بعد از تثبیت تنظیمات خاموشش کنید.
+- اگر asset خاصی باید external باقی بماند، `strict_asset_block` را خاموش کنید یا برای آن نگاشت محلی اضافه کنید.
+- اگر Customizer استفاده می شود، بازنویسی asset در context مربوط به customizer bypass می شود.
+- برای سایت های پربازدید، روشن نگه داشتن دائمی `log_asset_events` توصیه نمی شود.
 
----
+## ساختار مسیرهای مهم
+
+- `ghateino.php`
+- `assets/js/blocked-asset.js`
+- `assets/js/mixpanel-stub.js`
+- `assets/css/blocked-asset.css`
+- `assets/vendor/wp-core-js/`
+- `assets/vendor/swiper/`
+- `assets/vendor/ace-builds/`
+- `assets/vendor/fontawesome/`
+- `assets/vendor/google-fonts/`
+- `assets/vendor/dashicons/`
+- `assets/vendor/eicons/`
 
 ## نسخه
 
-`1.1.0`
+`1.2.0`
 
-## تیم توسعه
+## توسعه دهنده
 
 - Shokrino Team
 - https://shokrino.com
