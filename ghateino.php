@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ghateino
  * Description: در شرایط قطعی اینترنت یا نیاز به قطع کردن درخواست ها به وبسایت های خاص بهترین گزینه شما افزونه قطعینو هست
- * Version: 1.2.0
+ * Version: 1.2.1
  * Plugin URI: https://shokrino.com
  * Author: Shokrino Team
  * Author URI: https://shokrino.com
@@ -468,24 +468,25 @@ if ( ! class_exists( 'Ghateino_HTTP_Control' ) ) {
 
 			$max_request_timeout = isset( $input['max_request_timeout'] ) ? (string) $this->normalize_timeout_limit( $input['max_request_timeout'] ) : '3';
 
+			// WordPress may sanitize twice when creating the option; preserve explicit 'no' values.
 			return [
 				'mode'                => $mode,
 				'whitelist'           => $this->sanitize_host_list( $input['whitelist'] ?? '' ),
 				'blacklist'           => $this->sanitize_host_list( $input['blacklist'] ?? '' ),
-				'disable_telemetry'   => isset( $input['disable_telemetry'] ) ? 'yes' : 'no',
-				'disable_updates'     => isset( $input['disable_updates'] ) ? 'yes' : 'no',
-				'allow_whitelisted_updates' => isset( $input['allow_whitelisted_updates'] ) ? 'yes' : 'no',
-				'disable_gravatar'    => isset( $input['disable_gravatar'] ) ? 'yes' : 'no',
+				'disable_telemetry'   => ( $input['disable_telemetry'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'disable_updates'     => ( $input['disable_updates'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'allow_whitelisted_updates' => ( $input['allow_whitelisted_updates'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'disable_gravatar'    => ( $input['disable_gravatar'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
 				'gravatar_url'        => $gravatar_url,
-				'enable_logging'      => isset( $input['enable_logging'] ) ? 'yes' : 'no',
+				'enable_logging'      => ( $input['enable_logging'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
 				'log_retention_days'  => $retention_days,
 				'log_max_entries'     => $log_max_entries,
-				'log_asset_events'    => isset( $input['log_asset_events'] ) ? 'yes' : 'no',
-				'local_asset_rewrite' => isset( $input['local_asset_rewrite'] ) ? 'yes' : 'no',
-				'block_mixpanel'      => isset( $input['block_mixpanel'] ) ? 'yes' : 'no',
-				'strict_asset_block'  => isset( $input['strict_asset_block'] ) ? 'yes' : 'no',
-				'enable_front_vazirmatn' => isset( $input['enable_front_vazirmatn'] ) ? 'yes' : 'no',
-				'enable_timeout_guard'=> isset( $input['enable_timeout_guard'] ) ? 'yes' : 'no',
+				'log_asset_events'    => ( $input['log_asset_events'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'local_asset_rewrite' => ( $input['local_asset_rewrite'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'block_mixpanel'      => ( $input['block_mixpanel'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'strict_asset_block'  => ( $input['strict_asset_block'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'enable_front_vazirmatn' => ( $input['enable_front_vazirmatn'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
+				'enable_timeout_guard'=> ( $input['enable_timeout_guard'] ?? 'no' ) === 'yes' ? 'yes' : 'no',
 				'max_request_timeout' => $max_request_timeout,
 			];
 		}
